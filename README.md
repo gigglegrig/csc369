@@ -12,6 +12,8 @@ visualize Makefile
 complie
 - gcc -o test intercept test_intercept.c
 
+grant permission
+- chmod a+x test_intercept
 
 run
 - sudo ./test_intercept 
