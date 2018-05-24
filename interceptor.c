@@ -516,6 +516,10 @@ static int init_function(void) {
     sys_call_table[MY_CUSTOM_SYSCALL] = my_syscall;
     sys_call_table[__NR_exit_group] = my_exit_group;
 
+    // if: table[__NR_exit_group] table[MY_CUSTOM_SYSCALL] .Status=1
+    table[__NR_exit_group].intercepted = 1;
+    table[MY_CUSTOM_SYSCALL].intercepted = 1;
+
     set_addr_ro((unsigned long)sys_call_table);
     spin_unlock(&calltable_lock);
 
@@ -530,9 +534,6 @@ static int init_function(void) {
         table[i].listcount = 0;
         INIT_LIST_HEAD(&table[i].my_list);
     }
-    // if: table[__NR_exit_group] table[MY_CUSTOM_SYSCALL] .Status=1
-    table[__NR_exit_group].intercepted = 1;
-    table[MY_CUSTOM_SYSCALL].intercepted = 1;
     
     spin_unlock(&pidlist_lock);
 
