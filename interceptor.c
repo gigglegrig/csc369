@@ -353,6 +353,9 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
         if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL){
            	return -EINVAL;
         }
+        if(cmd < 1 || cmd > 4){
+            return -EINVAL;
+        }
         if(cmd == REQUEST_SYSCALL_INTERCEPT){
 
                 if(current_uid() != 0){   /*For the first two commands, we must be root*/
