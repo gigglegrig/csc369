@@ -502,10 +502,11 @@ long (*orig_custom_syscall)(void);
  * - Ensure synchronization as needed.
  */
 static int init_function(void) {
+    int i;
     // store orig_custom_syscall
-    orig_custom_syscall = &sys_call_table[MY_CUSTOM_SYSCALL];
+    orig_custom_syscall = sys_call_table[MY_CUSTOM_SYSCALL];
     // store original_NR_exit_group
-    orig_exit_group = &sys_call_table[__NR_exit_group];
+    orig_exit_group = sys_call_table[__NR_exit_group];
     // make sys_call_table rw
     set_addr_rw((unsigned long)sys_call_table);
         // replace MY_CUSTOM_SYSCALL with my_syscall
@@ -518,7 +519,7 @@ static int init_function(void) {
     spin_lock(&calltable_lock);
         // init table.Status, .monitored, .listcount to 0
         // init table list_head
-    int i;
+
     for(i=0; i<=NR_syscalls; i++){
         table[i].intercepted = 0;
         table[i].monitored = 0;
@@ -547,21 +548,21 @@ static int init_function(void) {
  */
 static void exit_function(void)
 {
+    int i;
+    // lock table
+    spin_lock(&calltable_lock);
     // set sys_call_table to rw
     set_addr_rw((unsigned long) sys_call_table);
 
     // write back MY_CUSTOM_SYSCALL
-    sys_call_table[MY_CUSTOM_SYSCALL] = *orig_custom_syscall;
+    sys_call_table[MY_CUSTOM_SYSCALL] = orig_custom_syscall;
     // write back __NR_exit_group
-    sys_call_table[__NR_exit_group] = *orig_exit_group;
+    sys_call_table[__NR_exit_group] = orig_exit_group;
 
     // set sys_call_table to ro
     set_addr_ro((unsigned long) sys_call_table);
-
-    // lock table
-    spin_lock(&calltable_lock);
     
-    int i;
+
     for(i=0; i<=NR_syscalls; i++){
         destroy_list(i);
     }
@@ -578,4 +579,3 @@ static void exit_function(void)
 
 module_init(init_function);
 module_exit(exit_function);
-
