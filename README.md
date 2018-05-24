@@ -9,6 +9,10 @@ copy forom local to vm
 visualize Makefile
 - cat Makefile
 
+complie
+- gcc -o test intercept test_intercept.c
+
+
 run
 - sudo ./test_intercept 
 - sudo ./test_full
