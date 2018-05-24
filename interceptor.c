@@ -433,7 +433,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
                     /*set monitored as 2*/
                     table[syscall].monitored = 2;
                 }
-               spin_unlock(&calltable_lock);/*unclocked*/
+               spin_unlock(&pidlist_lock);/*unclocked*/
 
         }
         else if(cmd == REQUEST_STOP_MONITORING){
@@ -454,7 +454,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
              }
 
              if(table[syscall].intercepted == 0){/*cannot stop monitoring when the syscall is not intercepted*/
-                	spin_unlock(&calltable_lock);/*spin unlock for table*/
+                	spin_unlock(&pidlist_lock);/*spin unlock for table*/
                 	return -EINVAL;
              }
 
