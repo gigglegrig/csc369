@@ -406,6 +406,7 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 
         }
         else if(cmd == REQUEST_START_MONITORING){
+                int indicator = 0;
                printk( KERN_DEBUG "interceptor %d %d %d", cmd, syscall, pid);
 
                if((check_pid_monitored(syscall, pid) == 1 && table[syscall].monitored == 1 )|| (check_pid_monitored(syscall,pid) == 0 && table[syscall].monitored == 2)){/*cannot monitor a pid that is already monitored*/
@@ -417,7 +418,8 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
                printk( KERN_DEBUG "locked");
 
                if(pid != 0){
-                    add_pid_sysc(pid, syscall);
+                    indicator = add_pid_sysc(pid, syscall);
+                    
                    /*change monitored to 1 if it is 0*/
                    if(table[syscall].monitored == 0){
                        table[syscall].monitored = 1;
@@ -432,10 +434,13 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
 
                printk( KERN_DEBUG "unlocked");
                spin_unlock(&pidlist_lock);/*unclocked*/
+               if (indicator != 0){
+                   return indicator;
+               }
             
         }
         else if(cmd == REQUEST_STOP_MONITORING){
-            
+             int indicator = 0;
              if(table[syscall].intercepted == 0){/*cannot stop monitoring when the syscall is not intercepted*/
                 	
                 	return -EINVAL;
@@ -452,13 +457,16 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
              }
              else if(pid != 0){
                     if(table[syscall].monitored == 2){
-                        add_pid_sysc(pid, syscall);
+                        indicator = add_pid_sysc(pid, syscall);
                     }else{
-                        del_pid_sysc(pid, syscall);
+                        indicator = del_pid_sysc(pid, syscall);
                     }
 
              }
              spin_unlock(&pidlist_lock);/*spin unlock for pid*/
+             if (indicator != 0){
+                 return indicator;
+             }
         }
 
 	return 0;
