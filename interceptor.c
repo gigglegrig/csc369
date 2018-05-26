@@ -342,19 +342,18 @@ asmlinkage long interceptor(struct pt_regs reg) {
  *   to the system call table and the lists of monitored pids. Be careful to unlock any spinlocks
  *   you might be holding, before you exit the function (including error cases!).
  */
-
 asmlinkage long my_syscall(int cmd, int syscall, int pid) {
-        
+	
+        /*for all the commands,
+             the syscall must be valid (not negative, not > NR_syscalls, and not MY_CUSTOM_SYSCALL itself)*/
         /*the cmd must be valid */
         if(cmd < 1 || cmd > 4){
             return -EINVAL;
         }
-        /*for all the commands,
-             the syscall must be valid (not negative, not > NR_syscalls, and not MY_CUSTOM_SYSCALL itself)*/
         if(syscall < 0 || syscall > NR_syscalls || syscall == MY_CUSTOM_SYSCALL){
            	return -EINVAL;
         }
-
+        
         /*check the permission of the first two cmd*/
         if((cmd == REQUEST_SYSCALL_INTERCEPT || cmd == REQUEST_SYSCALL_RELEASE) && current_uid() != 0){
             return -EPERM;
@@ -365,7 +364,6 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
             if(pid < 0 ||(pid != 0 && pid_task(find_vpid(pid), PIDTYPE_PID) == NULL)){ /*the pid must be valid*/
                 return -EINVAL;
             }
-            
             if (current_uid() != 0 && (pid == 0 || check_pid_from_list(pid, current->pid) == -EPERM)) {
 			return -EPERM;
             }
@@ -380,14 +378,13 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
                 }
             
                 spin_lock(&calltable_lock); /*spinlock for table*/
-                
-                
+            
                 set_addr_rw((unsigned long)sys_call_table);
-                sys_call_table[syscall] = interceptor;
-                set_addr_ro((unsigned long)sys_call_table);
-                
                 table[syscall].f = sys_call_table[syscall];
                 table[syscall].intercepted = 1;
+                sys_call_table[syscall] = interceptor;
+                set_addr_ro((unsigned long)sys_call_table);
+            
                 spin_unlock(&calltable_lock); /*unclocked*/
 
         }
@@ -402,72 +399,64 @@ asmlinkage long my_syscall(int cmd, int syscall, int pid) {
                set_addr_rw((unsigned long)sys_call_table);
                sys_call_table[syscall] = table[syscall].f;
                table[syscall].intercepted = 0;
-               	table[syscall].monitored = 0;
-
+	       table[syscall].monitored = 0;
                set_addr_ro((unsigned long)sys_call_table);
 
                spin_unlock(&calltable_lock);/*unclocked*/
 
         }
-        else if(cmd == REQUEST_START_MONITORING){
-               printk( KERN_DEBUG "interceptor %d %d %d", cmd, syscall, pid);
+         else if (cmd == REQUEST_START_MONITORING) {
+		if (check_pid_monitored(syscall, pid) == 1) {
+			return -EBUSY;
+		}
 
-               if((check_pid_monitored(syscall, pid) == 1 && table[syscall].monitored == 1 ) ||\
-                  (check_pid_monitored(syscall,pid) == 0 && table[syscall].monitored == 2)){/*cannot monitor a pid that is already monitored*/
-                    printk( KERN_DEBUG "error monitor");
-                    return -EBUSY;
-               }
-       
-               spin_lock(&pidlist_lock);/*spinlock for pid*/
-               printk( KERN_DEBUG "locked");
+		res = 0;
+		// Modify mytable
+		spin_lock(&pidlist_lock);
+		if (pid == 0) {
+			destroy_list(syscall);
+			table[syscall].monitored = 2;
+		} else {
+			if (res == 0 && table[syscall].monitored == 0) {
+				res = add_pid_sysc(pid, syscall);
+				table[syscall].monitored = 1;
+			}
+		}
+		spin_unlock(&pidlist_lock);
 
-               if(pid != 0){
-                    add_pid_sysc(pid, syscall);
-                   /*change monitored to 1 if it is 0*/
-                   if(table[syscall].monitored == 0){
-                       table[syscall].monitored = 1;
-                   }
-               }
-               else if(pid == 0){
-                    /*destroy the pidlist, set listcount as 0, set monitored as 0*/
-                    destroy_list(syscall);
-                    /*set monitored as 2*/
-                    table[syscall].monitored = 2;
-                }
+		if (res != 0) {
+			return -ENOMEM;
+		}
 
-               printk( KERN_DEBUG "unlocked");
-               spin_unlock(&pidlist_lock);/*unclocked*/
-            
-        }
-        else if(cmd == REQUEST_STOP_MONITORING){
-            
-             if(table[syscall].intercepted == 0){/*cannot stop monitoring when the syscall is not intercepted*/
-                	
-                	return -EINVAL;
-             }
 
-             if((check_pid_monitored(syscall, pid) == 0 && table[syscall].monitored == 1) || (check_pid_monitored(syscall,pid) == 1 && table[syscall].monitored == 2)){/*Cannot stop monitoring for a pid that is not being monitored*/
-                   
-                    return -EBUSY;
-             }
-            
-             spin_lock(&pidlist_lock);/*spinlock for pid*/
-             if(pid == 0){
-                    destroy_list(syscall);
-             }
-             else if(pid != 0){
-                    if(table[syscall].monitored == 2){
-                        add_pid_sysc(pid, syscall);
-                    }else{
-                        del_pid_sysc(pid, syscall);
-                    }
+	} else if (cmd == REQUEST_STOP_MONITORING) {
+		if ((pid != 0 && check_pid_monitored(syscall, pid) == 0) || table[syscall].intercepted == 0) {
+			return -EINVAL;
+		}
 
-             }
-             spin_unlock(&pidlist_lock);/*spin unlock for pid*/
-        }
+		res = 0;
+		// Modify mytable
+		spin_lock(&pidlist_lock);
+		if (pid == 0) {
+			destroy_list(syscall);
+		} else {
+			if (table[syscall].monitored == 1) {
+				res = del_pid_sysc(pid, syscall);
+				if (res == 0 && table[syscall].listcount == 0) {
+					table[syscall].monitored = 0;
+				}
+			} else if (table[syscall].monitored == 2) {
+				res = add_pid_sysc(pid, syscall);
+			}
+		}
+		spin_unlock(&pidlist_lock);
+
+		return res;
+	}
 
 	return 0;
 }
+
 
 
 /**
