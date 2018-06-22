@@ -66,6 +66,12 @@ int opt_evict() {
                 // Didn't find until EOF
                 max_next_loc = -1;
                 evict_frame = i;
+                coremap[i].next_use_loc = -1;
+            }
+        } else {
+            if (currloc > max_next_loc) {
+                max_next_loc = currloc;
+                evict_frame = i;
             }
         }
     }
@@ -73,6 +79,9 @@ int opt_evict() {
     // Restore file pointer and location
     fsetpos(tracefd, &fd_saveloc);
     currloc = saveloc;
+
+    //printf("Evicting frame %d, it's next showing time is %d\n", evict_frame, coremap[evict_frame].next_use_loc);
+
     coremap[evict_frame].next_use_loc = 0;
 
 	return evict_frame;
@@ -102,6 +111,11 @@ void opt_ref(pgtbl_entry_t *p) {
  * replacement algorithm.
  */
 void opt_init() {
-    tracefd = fopen(tracefile, 'r');
+    if(tracefile != NULL) {
+        if((tracefd = fopen(tracefile, "r")) == NULL) {
+            perror("Error opening tracefile:");
+            exit(1);
+        }
+    }
 }
 
