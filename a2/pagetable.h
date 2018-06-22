@@ -65,6 +65,8 @@ struct frame {
 	char in_use;       // True if frame is allocated, False if frame is free
 	pgtbl_entry_t *pte;// Pointer back to pagetable entry (pte) for page
 	                   // stored in this frame
+	struct frame * sp_prev; // Store the previous one in double linked-list, used for LRU
+	struct frame * sp_next; // Store the next one in double linked-list, used for LRU
 };
 
 /* The coremap holds information about physical memory.
