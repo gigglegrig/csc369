@@ -9,7 +9,7 @@
 
 // Define global variables declared in sim.h
 unsigned memsize = 0;
-int debug = 1;
+int debug = 0;
 char *physmem = NULL;
 struct frame *coremap = NULL;
 char *tracefile = NULL;
