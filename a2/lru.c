@@ -34,7 +34,7 @@ int lru_evict() {
 	evict_ptr->sp_prev = NULL;
 
 	
-	return (stack_tail->pte->frame) >> PAGE_SHIFT;
+	return (evict_ptr->pte->frame) >> PAGE_SHIFT;
 }
 
 /* This function is called on each access to a page to update any information
