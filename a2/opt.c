@@ -15,7 +15,7 @@ extern struct frame *coremap;
 
 extern char *tracefile;
 FILE* tracefd;
-int currloc;
+unsigned int currloc;
 char buf[MAXLINE];
 
 
@@ -32,15 +32,15 @@ int opt_evict() {
     // Save current file pointer location
     fpos_t fd_saveloc;
     fgetpos(tracefd, &fd_saveloc);
-    int saveloc = currloc;
+    unsigned int saveloc = currloc;
 
     for (int i = 0; i < memsize; i++) {
         fsetpos(tracefd, &fd_saveloc);
         currloc = saveloc;
 
         // For every frame update it's next use location
-        if (coremap[i].next_use_loc < currloc) {
-            addr_t target_vaddr = *((addr_t *)(&physmem[(coremap->pte->frame >> PAGE_SHIFT)*SIMPAGESIZE] + sizeof(int)));
+        if (coremap[i].next_use_loc <= currloc) {
+            addr_t target_vaddr = *((addr_t *)(&physmem[(coremap[i].pte->frame >> PAGE_SHIFT)*SIMPAGESIZE] + sizeof(int)));
             while(fgets(buf, MAXLINE, tracefd) != NULL) {
                 if(buf[0] != '=') {
                     sscanf(buf, "%c %lx", &type, &vaddr);
@@ -62,15 +62,15 @@ int opt_evict() {
 
                 currloc++;
             }
-            if (coremap[i].next_use_loc < currloc) {
-                // Didn't find until EOF
-                max_next_loc = -1;
+            if (coremap[i].next_use_loc < saveloc) {
+                // Didn't find until EOF, find the perfect evict
                 evict_frame = i;
                 coremap[i].next_use_loc = -1;
+                break;
             }
         } else {
-            if (currloc > max_next_loc) {
-                max_next_loc = currloc;
+            if (coremap[i].next_use_loc > max_next_loc) {
+                max_next_loc = coremap[i].next_use_loc;
                 evict_frame = i;
             }
         }
@@ -80,7 +80,7 @@ int opt_evict() {
     fsetpos(tracefd, &fd_saveloc);
     currloc = saveloc;
 
-    //printf("Evicting frame %d, it's next showing time is %d\n", evict_frame, coremap[evict_frame].next_use_loc);
+    printf("Evicting frame %d, it's next showing time is %d\n", evict_frame, coremap[evict_frame].next_use_loc);
 
     coremap[evict_frame].next_use_loc = 0;
 
