@@ -67,7 +67,6 @@ struct frame {
 	                   // stored in this frame
 	struct frame * sp_prev; // Store the previous one in double linked-list, used for LRU
 	struct frame * sp_next; // Store the next one in double linked-list, used for LRU
-	unsigned int next_use_loc;
 };
 
 /* The coremap holds information about physical memory.
