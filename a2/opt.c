@@ -13,17 +13,16 @@ extern int debug;
 extern struct frame *coremap;
 extern char *tracefile;
 
-unsigned int currloc;
 
 /* ----------------------- HashTable Data Structure -------------------------*/
 struct linkedListNode {
-    long key;
+    unsigned long key;
     struct linkedListNode * prev;
     struct linkedListNode * next;
 };
 
 struct hashEntryNode {
-    long key;
+    unsigned long key;
     struct linkedListNode * start_ptr;
     struct linkedListNode * end_ptr;
     struct hashEntryNode * prev;
@@ -35,19 +34,22 @@ typedef struct linkedListNode locationList;
 
 hashEntry * hashTable[HASHSIZE];
 
-int hashFunc(long key) {
-    unsigned input = (unsigned) key;
+int hashFunc(addr_t key) {
+    int part1 = (key) >> PGDIR_SHIFT;
+    int part2 = (((key) >> PAGE_SHIFT) & PGTBL_MASK);
+    int part3 = ((key) << (PGDIR_SHIFT + PAGE_SHIFT)) >> (PGDIR_SHIFT + PAGE_SHIFT);
     int hash = 0;
+    unsigned input = (part1 + part2) * HASHSIZE + part3;
     while (input >= HASHSIZE) {
         hash += input % HASHSIZE;
-        input = input / HASHSIZE;
+        input = (input * 3.1415926) / HASHSIZE;
     }
-    return hash % 1024;
+    return hash % HASHSIZE;
 }
 
 hashEntry * getEntryFromHashTable(addr_t vaddr) {
     hashEntry * target = hashTable[hashFunc(vaddr)];
-    while (target != NULL && target->key != vaddr) {
+    while (target != NULL && target->key != (unsigned long)vaddr) {
         if (target->next != NULL) {
             // Loop through Linkedlist
             target = target->next;
@@ -96,7 +98,7 @@ void addLocation(addr_t vaddr, unsigned location) {
     }
 }
 
-void removeFirstLocation(unsigned vaddr) {
+void removeFirstLocation(addr_t vaddr) {
     hashEntry * entry_ptr = getEntryFromHashTable(vaddr);
     locationList * loc_ptr = entry_ptr->start_ptr;
     if (loc_ptr->prev == NULL && loc_ptr->next == NULL) {
@@ -132,7 +134,7 @@ void removeFirstLocation(unsigned vaddr) {
  * for the page that is to be evicted.
  */
 int opt_evict() {
-    unsigned int max_next_loc = 0;
+    unsigned long max_next_loc = 0;
     int evict_frame = -1;
     for (int i = 0; i < memsize; i++) {
         addr_t vaddr = *((addr_t *)(&physmem[(coremap[i].pte->frame >> PAGE_SHIFT)*SIMPAGESIZE] + sizeof(int)));
@@ -140,12 +142,12 @@ int opt_evict() {
 
         if (entry_ptr == NULL) {
             // No location recored in hashTable, never use in future
-            max_next_loc = -1;
+            max_next_loc = (unsigned int)-1;
             evict_frame = i;
             break;
         }
 
-        unsigned next_loc = entry_ptr->start_ptr->key;
+        unsigned long next_loc = entry_ptr->start_ptr->key;
         if (next_loc > max_next_loc) {
             max_next_loc = next_loc;
             evict_frame = i;
@@ -153,7 +155,7 @@ int opt_evict() {
     }
 
     if (debug == 1) {
-        printf("Evicting frame %d, it's next showing time is %d\n", evict_frame, max_next_loc);
+        printf("Evicting frame %d, it's next showing time is %ld\n", evict_frame, max_next_loc);
     }
 
 	return evict_frame;
@@ -166,7 +168,6 @@ int opt_evict() {
 void opt_ref(pgtbl_entry_t *p) {
     addr_t vaddr = *((addr_t *)(&physmem[(p->frame >> PAGE_SHIFT)*SIMPAGESIZE] + sizeof(int)));
     removeFirstLocation(vaddr);
-    currloc++;
 }
 
 /* Initializes any data structures needed for this
@@ -202,8 +203,6 @@ void opt_init() {
         }
         location++;
     }
-
-    currloc = 0;
 }
 
 
