@@ -12,8 +12,8 @@ extern int debug;
 
 extern struct frame *coremap;
 
-struct frame * stack_head;
-struct frame * stack_tail;
+struct frame * stack_head = NULL;
+struct frame * stack_tail = NULL;
 
 /* Page to evict is chosen using the accurate LRU algorithm.
  * Returns the page frame number (which is also the index in the coremap)
@@ -76,6 +76,4 @@ void lru_ref(pgtbl_entry_t *p) {
  * replacement algorithm 
  */
 void lru_init() {
-	stack_head == NULL;
-	stack_tail == NULL;
 }

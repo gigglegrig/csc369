@@ -17,13 +17,13 @@ unsigned int currloc;
 
 /* ----------------------- HashTable Data Structure -------------------------*/
 struct linkedListNode {
-    int key;
+    long key;
     struct linkedListNode * prev;
     struct linkedListNode * next;
 };
 
 struct hashEntryNode {
-    int key;
+    long key;
     struct linkedListNode * start_ptr;
     struct linkedListNode * end_ptr;
     struct hashEntryNode * prev;
@@ -35,7 +35,7 @@ typedef struct linkedListNode locationList;
 
 hashEntry * hashTable[HASHSIZE];
 
-int hashFunc(int key) {
+int hashFunc(long key) {
     unsigned input = (unsigned) key;
     int hash = 0;
     while (input >= HASHSIZE) {
@@ -45,7 +45,7 @@ int hashFunc(int key) {
     return hash % 1024;
 }
 
-hashEntry * getEntryFromHashTable(unsigned vaddr) {
+hashEntry * getEntryFromHashTable(addr_t vaddr) {
     hashEntry * target = hashTable[hashFunc(vaddr)];
     while (target != NULL && target->key != vaddr) {
         if (target->next != NULL) {
@@ -72,7 +72,7 @@ void addEntryToHashTable(hashEntry * newEntry) {
     hashTable[hashFunc(newEntry->key)] = newEntry;
 }
 
-void addLocation(unsigned vaddr, unsigned location) {
+void addLocation(addr_t vaddr, unsigned location) {
     locationList * newLoc = malloc(sizeof(locationList));
     newLoc->key = location;
     newLoc->prev = NULL;
@@ -176,7 +176,7 @@ void opt_init() {
     FILE* tracefd;
     char buf[MAXLINE];
     char type;
-    unsigned vaddr;
+    addr_t vaddr;
 
     // Empty hashTable
     for (int i = 0; i < HASHSIZE; i++) {
