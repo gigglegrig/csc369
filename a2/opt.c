@@ -204,7 +204,7 @@ void opt_init() {
         location++;
     }
 
-    if (debug == 0) {
+    if (debug == 1) {
         int count = 0;
         for (int i = 0; i < hashSize; i++) {
             if (hashTable[i] == NULL) {
