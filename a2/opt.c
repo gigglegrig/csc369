@@ -6,13 +6,13 @@
 #include "pagetable.h"
 #include "sim.h"
 
-#define HASHSIZE 1024
-
 extern unsigned int memsize;
 extern int debug;
 extern struct frame *coremap;
 extern char *tracefile;
 
+int hashSize;
+int entryCount;
 
 /* ----------------------- HashTable Data Structure -------------------------*/
 struct linkedListNode {
@@ -32,19 +32,10 @@ struct hashEntryNode {
 typedef struct hashEntryNode hashEntry;
 typedef struct linkedListNode locationList;
 
-hashEntry * hashTable[HASHSIZE];
+hashEntry ** hashTable;
 
 int hashFunc(addr_t key) {
-    int part1 = (key) >> PGDIR_SHIFT;
-    int part2 = (((key) >> PAGE_SHIFT) & PGTBL_MASK);
-    int part3 = ((key) << (PGDIR_SHIFT + PAGE_SHIFT)) >> (PGDIR_SHIFT + PAGE_SHIFT);
-    int hash = 0;
-    unsigned input = (part1 + part2) * HASHSIZE + part3;
-    while (input >= HASHSIZE) {
-        hash += input % HASHSIZE;
-        input = (input * 3.1415926) / HASHSIZE;
-    }
-    return hash % HASHSIZE;
+    return (unsigned) key % hashSize;
 }
 
 hashEntry * getEntryFromHashTable(addr_t vaddr) {
@@ -62,7 +53,6 @@ hashEntry * getEntryFromHashTable(addr_t vaddr) {
 }
 
 void addEntryToHashTable(hashEntry * newEntry) {
-
     // Add to the beginning of the linked list
     hashEntry * target = hashTable[hashFunc(newEntry->key)];
     newEntry->next = target;
@@ -90,6 +80,7 @@ void addLocation(addr_t vaddr, unsigned location) {
         newEntry->prev = NULL;
         newEntry->next = NULL;
         addEntryToHashTable(newEntry);
+        entryCount++;
     } else {
         // Exist, add to the end of list
         target_entry->end_ptr->next = newLoc;
@@ -114,6 +105,7 @@ void removeFirstLocation(addr_t vaddr) {
         }
         free(loc_ptr);
         free(entry_ptr);
+        entryCount--;
     } else {
         if (loc_ptr->prev != NULL) {
             loc_ptr->prev->next = loc_ptr->next;
@@ -168,19 +160,27 @@ int opt_evict() {
 void opt_ref(pgtbl_entry_t *p) {
     addr_t vaddr = *((addr_t *)(&physmem[(p->frame >> PAGE_SHIFT)*SIMPAGESIZE] + sizeof(int)));
     removeFirstLocation(vaddr);
+
+    if (entryCount == 0) {
+        free(hashTable);
+    }
 }
 
 /* Initializes any data structures needed for this
  * replacement algorithm.
  */
 void opt_init() {
+    hashSize = memsize - 1;
+    hashTable = malloc(sizeof(hashEntry *) * hashSize);
+    entryCount = 0;
+
     FILE* tracefd;
     char buf[MAXLINE];
     char type;
     addr_t vaddr;
 
     // Empty hashTable
-    for (int i = 0; i < HASHSIZE; i++) {
+    for (int i = 0; i < hashSize; i++) {
         hashTable[i] = NULL;
     }
 
@@ -202,6 +202,16 @@ void opt_init() {
             continue;
         }
         location++;
+    }
+
+    if (debug == 0) {
+        int count = 0;
+        for (int i = 0; i < hashSize; i++) {
+            if (hashTable[i] == NULL) {
+                count++;
+            }
+        }
+        printf("Empty entry in hash table: %d\n", count);
     }
 }
 
