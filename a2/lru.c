@@ -4,9 +4,10 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include "pagetable.h"
+#include "sim.h"
 
 
-extern int memsize;
+extern unsigned int memsize;
 
 extern int debug;
 
@@ -33,6 +34,10 @@ int lru_evict() {
 	evict_ptr->sp_next = NULL;
 	evict_ptr->sp_prev = NULL;
 
+	if (debug == 1) {
+		printf("evicting %lx\n", *(addr_t *)(&physmem[(evict_ptr->pte->frame >> PAGE_SHIFT)*SIMPAGESIZE] + sizeof(int)));
+	}
+
 	
 	return (evict_ptr->pte->frame) >> PAGE_SHIFT;
 }
@@ -50,11 +55,18 @@ void lru_ref(pgtbl_entry_t *p) {
 	} else {
 		// Put referenced node at the beginning of the list
 		if (target_node->sp_next == NULL && target_node->sp_prev == NULL) {
-			// Link a new node to the list
-			target_node->sp_next = stack_head;
-			stack_head->sp_prev = target_node;
-			stack_head = target_node;
+			// New node or first node in list
+			if (!(stack_head == stack_tail && stack_head == target_node)) {
+				// Link a new node to the list
+				target_node->sp_next = stack_head;
+				stack_head->sp_prev = target_node;
+				stack_head = target_node;
+			}
 		} else {
+			// Node already in list (also at least two nodes)
+			if (stack_tail == target_node) {
+				stack_tail = target_node->sp_prev;
+			}
 			// Change the location of the node to the beginning one
 			if (target_node->sp_prev != NULL) {
 				target_node->sp_prev->sp_next = target_node->sp_next;
