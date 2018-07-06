@@ -147,7 +147,7 @@ int opt_evict() {
     }
 
     if (debug == 1) {
-        printf("Evicting frame %d, it's next showing time is %ld\n", evict_frame, max_next_loc);
+        printf("Evicting frame %lx, it's next showing time is %ld\n", *(addr_t *)(&physmem[evict_frame] + sizeof(int)), max_next_loc);
     }
 
 	return evict_frame;
