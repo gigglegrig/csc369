@@ -36,6 +36,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    close(disk_fd);
 
     return 0;
 }

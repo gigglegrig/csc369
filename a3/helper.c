@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <zconf.h>
 #include "helper.h"
 
 void check_argc(char * usage, int in, int target) {
@@ -13,12 +14,21 @@ void check_argc(char * usage, int in, int target) {
     }
 }
 
+void check_path_format(char * path) {
+    if (path[0] != '/') {
+        printf("No such file or directory\n");
+        exit(ENOENT);
+    }
+}
+
+
 
 void read_disk(char * filename) {
-    int fd = open(filename, O_RDWR);
+    disk_fd = open(filename, O_RDWR);
 
-    disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    disk = mmap(NULL, 128 * 1024, PROT_READ | PROT_WRITE, MAP_SHARED, disk_fd, 0);
     if(disk == MAP_FAILED) {
+        close(disk_fd);
         perror("mmap");
         exit(1);
     }
@@ -54,11 +64,7 @@ int check_inode_directory(struct ext2_inode * inode) {
 
 
 struct ext2_inode * get_inode_by_path(struct ext2_inode * root, char * path) {
-    if (path[0] != '/') {
-        // All path start from root
-        printf("No such file or directory\n");
-        exit(ENOENT);
-    }
+    check_path_format(path);
 
     struct ext2_inode * result = root;
 
@@ -106,4 +112,41 @@ struct ext2_inode * find_file(struct ext2_inode * source, char * file) {
     // If after loop function did not return
     printf("No such file or directory\n");
     exit(ENOENT);
+}
+
+int find_last_char_n(char * string, char target) {
+    int result = -1;
+
+    int i = 0;
+    while (string[i] != '\0') {
+        if (string[i] == target) {
+            result = i;
+        }
+        i++;
+    }
+
+    return result;
+}
+
+void split_last_part_of_path(char * path, char ** out_pathname, char ** out_filename) {
+    check_path_format(path);
+
+    int last_slash = find_last_char_n(path, '/');
+    if (last_slash + 1 == strlen(path)) {
+        // The last part must be a directory
+        *out_pathname = malloc(sizeof(char) * (strlen(path) + 1));
+        strncpy(*out_pathname, path, strlen(path) + 1);
+        (*out_pathname)[strlen(path) + 1] = '\0';
+    } else if (last_slash != -1) {
+        // The last part may be a name
+        *out_pathname = malloc((last_slash + 2) * sizeof(char));
+        strncpy(*out_pathname, path, last_slash + 2);
+        (*out_pathname)[last_slash + 1] = '\0';
+
+        // Copy last part to newfile name
+        int newfile_len = (int) strlen(path) - last_slash - 1;
+        *out_filename = malloc((newfile_len + 1) * sizeof(char));
+        strncpy(*out_filename, path + last_slash + 1, newfile_len + 1);
+        (*out_filename)[newfile_len + 1] = '\0';
+    }
 }
