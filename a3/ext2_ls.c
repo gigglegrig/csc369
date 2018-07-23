@@ -1,15 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include "ext2.h"
 #include "helper.h"
 
-extern unsigned char *disk;
-extern struct ext2_group_desc *gd;
-
 int main(int argc, char **argv) {
 
-    check_argc("Usage: readimg <image file name> <path>\n", argc, 3);
+    check_argc("Usage: ext2_ls <image file name> <absolute path>\n", argc, 3);
     read_disk(argv[1]);
 
     struct ext2_inode * target = get_inode_by_path(root_inode, argv[2]);
