@@ -11,6 +11,10 @@ struct ext2_group_desc *gd; // (First) Group descriptor
 char * curr_dir_name;
 struct ext2_inode * root_inode;
 
+struct block {
+    unsigned char byte[EXT2_BLOCK_SIZE];
+};
+
 
 void check_argc(char * usage, int in, int target);
 void check_path_format(char * path);

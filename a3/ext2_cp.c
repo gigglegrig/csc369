@@ -34,27 +34,26 @@ int main(int argc, char **argv) {
 
     struct ext2_inode * tpath_inode = get_inode_by_path(root_inode, target_pathname);
 
-    int tfree_block = find_free_block();
+    //int tfree_block = find_free_block();
+    struct block * tblock = (struct block *) disk + EXT2_BLOCK_SIZE * find_free_block();
     int tblock_offset = 0;
 
     // Copy file in binary
     char c = fgetc(file);
     while (!feof(file)) {
-        *(disk + EXT2_BLOCK_SIZE * tfree_block + tblock_offset) = c;
+        tblock->byte[tblock_offset++] = c;
         c = fgetc(file);
-        tblock_offset++;
         if (tblock_offset == EXT2_BLOCK_SIZE) {
             // Get a new block
             add_block_to_inode(tfree_block);
-            tfree_block = find_free_block();
+            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * find_free_block();
             tblock_offset = 0;
         }
     }
 
     // Fill left space with 0
     while (tblock_offset != 0) {
-        *(disk + EXT2_BLOCK_SIZE * tfree_block + tblock_offset) = 0;
-        tblock_offset++;
+        tblock->byte[tblock_offset++] = 0;
         if (tblock_offset == EXT2_BLOCK_SIZE) {
             // Get a new block
             add_block_to_inode(tfree_block);
