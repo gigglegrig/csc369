@@ -311,6 +311,10 @@ void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, 
 
                 break;
             }
+
+            curr_pos += dir->rec_len;
+            dir = (void *) dir + dir->rec_len;
+
         } else {
             // No empty space
             curr_pos += dir->rec_len;
