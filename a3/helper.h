@@ -6,6 +6,7 @@
 #define BLOCK(x) (disk + EXT2_BLOCK_SIZE * (x))
 #define PAD(x) ((x) + ((4 - ((x) % 4)) % 4))
 #define MAX12 (12 + EXT2_BLOCK_SIZE / sizeof(int))
+#define IBLOCKS(x) (((x)->i_blocks) / (EXT2_BLOCK_SIZE / 512))
 
 int disk_fd;
 unsigned char * disk; // Disk
@@ -34,5 +35,6 @@ unsigned int find_free_block();
 unsigned int find_free_inode();
 void add_block_to_inode(struct ext2_inode *inode, unsigned int block);
 void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, unsigned char file_type, char * name);
+int get_block_from_inode(struct ext2_inode *inode, unsigned num);
 
 #endif //CSC369_HELPER_H

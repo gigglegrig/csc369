@@ -107,7 +107,7 @@ struct ext2_inode * find_file(struct ext2_inode * source, char * file) {
                 int curr_pos = 0;
                 while (curr_pos < EXT2_BLOCK_SIZE) {
                     // Find the target file's inode
-                    if (strncmp(file, dir->name, dir->name_len) == 0) {
+                    if (strncmp(file, dir->name, strlen(file)) == 0) {
                         // Since inode is 1-based counting, we deduct 1 here
                         return get_inode_by_num(dir->inode);
                     }
@@ -229,10 +229,10 @@ unsigned int find_free_inode() {
 }
 
 void add_block_to_inode(struct ext2_inode *inode, unsigned int block) {
-    if (inode->i_blocks < 12) {
-        inode->i_block[inode->i_blocks] = block;
+    if (IBLOCKS(inode) < 12) {
+        inode->i_block[IBLOCKS(inode)] = block;
         inode->i_blocks += EXT2_BLOCK_SIZE / 512;
-    } else if (inode->i_blocks >= 12 && inode->i_blocks < MAX12) {
+    } else if (IBLOCKS(inode) >= 12 && IBLOCKS(inode) < MAX12) {
         // The single indirection block
         struct block * tblock;
 
@@ -323,13 +323,13 @@ void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, 
             if (curr_pos >= EXT2_BLOCK_SIZE) {
                 // Finished this block size, find next
                 curr_bindex++;
-                if (curr_bindex < dir_inode->i_blocks) {
+                if (curr_bindex < IBLOCKS(dir_inode)) {
                     // Next block is still in blocks
-                    curr_block = dir_inode->i_block[curr_bindex];
+                    curr_block = get_block_from_inode(dir_inode, curr_bindex);
                     dir = (struct ext2_dir_entry_2 *) BLOCK(curr_block);
                     curr_pos = 0;
                 } else if (curr_bindex < MAX12) {
-                    // Need a new block
+                    // curr_bindex bigger than used blocks, Need a new block
                     unsigned int nblock_num = find_free_block();
                     struct block * nblock = (struct block *) BLOCK(nblock_num);
                     dir = (struct ext2_dir_entry_2 *) nblock;
