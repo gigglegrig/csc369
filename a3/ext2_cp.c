@@ -4,6 +4,7 @@
 #include <fcntl.h>
 #include <zconf.h>
 #include <string.h>
+#include <errno.h>
 #include "ext2.h"
 #include "helper.h"
 
@@ -35,6 +36,13 @@ int main(int argc, char **argv) {
 
 
     struct ext2_inode * tpath_inode = get_inode_by_path(root_inode, target_pathname);
+
+    // Check if already have a file with the same name
+    struct ext2_inode * find_result = find_file(tpath_inode, target_filename);
+    if (find_result != NULL) {
+        fprintf(stderr, "File already exist.\n");
+        exit(EEXIST);
+    }
 
     // Find a new inode
     unsigned int inum = find_free_inode();

@@ -77,6 +77,12 @@ struct ext2_inode * get_inode_by_path(struct ext2_inode * root, char * path) {
     while (curr_dir_name != NULL) {
         //printf("Find directory name '%s'\n", curr_dir_name);
         result = find_file(result, curr_dir_name);
+
+        if (result == NULL) {
+            printf("No such file or directory\n");
+            exit(ENOENT);
+        }
+
         // Continue splitting string
         char * temp = strtok(NULL, "/");
         if (temp == NULL) {
@@ -114,8 +120,7 @@ struct ext2_inode * find_file(struct ext2_inode * source, char * file) {
     }
 
     // If after loop function did not return
-    printf("No such file or directory\n");
-    exit(ENOENT);
+    return NULL;
 }
 
 int find_last_char_n(char * string, char target) {
