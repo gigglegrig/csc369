@@ -150,3 +150,29 @@ void split_last_part_of_path(char * path, char ** out_pathname, char ** out_file
         (*out_filename)[newfile_len + 1] = '\0';
     }
 }
+
+void change_bitmap(unsigned int bit_pos, int location, unsigned char value) {
+    location -= 1; // Change 1 based location to 0 based.
+
+    unsigned char *bitmap = disk + EXT2_BLOCK_SIZE * bit_pos;
+    int byte = location / (sizeof(unsigned int) * 8);
+    int bit = location % (sizeof(unsigned int) * 8);
+
+    if (value == 0) {
+        bitmap[byte] = bitmap[byte] & ((unsigned char) 0 << bit);
+    } else if (value == 1) {
+        bitmap[byte] = bitmap[byte] | ((unsigned char) 1 << bit);
+    }
+}
+
+int find_free_block() {
+
+}
+
+void add_block_to_inode(struct ext2_inode *inode, int block) {
+    // Change block bitmap to occupied, update infos in bf
+}
+
+struct ext2_inode * create_new_inode() {
+    // Find free inode section and create a new inode
+}

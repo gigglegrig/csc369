@@ -19,6 +19,9 @@ struct ext2_inode * get_inode_by_num(int);
 int check_inode_directory(struct ext2_inode *);
 struct ext2_inode * find_file(struct ext2_inode *, char *);
 struct ext2_inode * get_inode_by_path(struct ext2_inode *, char *);
+void change_bitmap(unsigned int bit_pos, int location, unsigned char value);
 void split_last_part_of_path(char *, char **, char **);
+int find_free_block();
+void add_block_to_inode(struct ext2_inode *inode, int block);
 
 #endif //CSC369_HELPER_H
