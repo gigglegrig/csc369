@@ -151,22 +151,70 @@ void split_last_part_of_path(char * path, char ** out_pathname, char ** out_file
     }
 }
 
-void change_bitmap(unsigned int bit_pos, int location, unsigned char value) {
+void set_bit(char bori, int location, unsigned char value) {
     location -= 1; // Change 1 based location to 0 based.
+
+    unsigned int bit_pos = 0;
+    unsigned short * count = NULL;
+
+    if (bori == 'b') {
+        bit_pos = gd->bg_block_bitmap;
+        count = &(gd->bg_free_blocks_count);
+    } else if (bori == 'i') {
+        bit_pos = gd->bg_inode_bitmap;
+        count = &(gd->bg_free_inodes_count);
+    }
 
     unsigned char *bitmap = disk + EXT2_BLOCK_SIZE * bit_pos;
     int byte = location / (sizeof(unsigned int) * 8);
     int bit = location % (sizeof(unsigned int) * 8);
 
-    if (value == 0) {
+    if (value == 0 && get_bit(bori, location)) {
+        // Set 1 to 0
         bitmap[byte] = bitmap[byte] & ((unsigned char) 0 << bit);
-    } else if (value == 1) {
+        (*count)--;
+    } else if (value == 1 && !(get_bit(bori, location))) {
         bitmap[byte] = bitmap[byte] | ((unsigned char) 1 << bit);
+        (*count)++;
     }
 }
 
-int find_free_block() {
+int get_bit(char bori, int location) {
+    location -= 1; // Change 1 based location to 0 based.
 
+    unsigned int bit_pos = 0;
+
+    if (bori == 'b') {
+        bit_pos = gd->bg_block_bitmap;
+    } else if (bori == 'i') {
+        bit_pos = gd->bg_inode_bitmap;
+    }
+
+    unsigned char *bitmap = disk + EXT2_BLOCK_SIZE * bit_pos;
+    int byte = location / (sizeof(unsigned int) * 8);
+    int bit = location % (sizeof(unsigned int) * 8);
+
+    return (bitmap[byte] >> bit) & 1;
+}
+
+int find_free_block() {
+    for (int i = 1; i <= sb->s_blocks_count; i++) {
+        if (get_bit('b', i) == 0) {
+            return i;
+        }
+    }
+
+    return 0;
+}
+
+int find_free_inode() {
+    for (int i = 12; i <= sb->s_inodes_count; i++) {
+        if (get_bit('i', i) == 0) {
+            return i;
+        }
+    }
+
+    return 0;
 }
 
 void add_block_to_inode(struct ext2_inode *inode, int block) {

@@ -34,8 +34,13 @@ int main(int argc, char **argv) {
 
     struct ext2_inode * tpath_inode = get_inode_by_path(root_inode, target_pathname);
 
-    //int tfree_block = find_free_block();
-    struct block * tblock = (struct block *) disk + EXT2_BLOCK_SIZE * find_free_block();
+    // Find a new inode
+    int inum = find_free_inode();
+    struct ext2_inode * newfile_inode = get_inode_by_num(inum);
+    memset(newfile_inode, 0, sb->s_inode_size);
+
+    int bnum = find_free_block();
+    struct block * tblock = (struct block *) disk + EXT2_BLOCK_SIZE * bnum;
     int tblock_offset = 0;
 
     // Copy file in binary
@@ -45,8 +50,9 @@ int main(int argc, char **argv) {
         c = fgetc(file);
         if (tblock_offset == EXT2_BLOCK_SIZE) {
             // Get a new block
-            add_block_to_inode(tfree_block);
-            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * find_free_block();
+            add_block_to_inode(bnum);
+            bnum = find_free_block();
+            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * bnum;
             tblock_offset = 0;
         }
     }
@@ -55,7 +61,6 @@ int main(int argc, char **argv) {
     while (tblock_offset != 0) {
         tblock->byte[tblock_offset++] = 0;
         if (tblock_offset == EXT2_BLOCK_SIZE) {
-            // Get a new block
             add_block_to_inode(tfree_block);
             tblock_offset = 0;
         }
