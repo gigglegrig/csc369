@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <zconf.h>
 #include "ext2.h"
 #include "helper.h"
 
@@ -19,7 +21,7 @@ int main(int argc, char **argv) {
             // If block exists
             if (target->i_block[k]) {
                 int block_num = target->i_block[k];
-                struct ext2_dir_entry_2 *dir = (struct ext2_dir_entry_2 *) (disk + EXT2_BLOCK_SIZE * block_num);
+                struct ext2_dir_entry_2 *dir = (struct ext2_dir_entry_2 *) BLOCK(block_num);
 
                 int curr_pos = 0;
                 while (curr_pos < EXT2_BLOCK_SIZE) {

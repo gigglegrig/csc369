@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     struct ext2_inode * tpath_inode = get_inode_by_path(root_inode, target_pathname);
 
     // Find a new inode
-    int inum = find_free_inode();
+    unsigned int inum = find_free_inode();
     struct ext2_inode * newfile_inode = get_inode_by_num(inum);
     memset(newfile_inode, 0, sb->s_inode_size);
 
@@ -50,7 +50,7 @@ int main(int argc, char **argv) {
     while (!feof(file)) {
         if (tblock_offset == 0) {
             bnum = find_free_block();
-            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * bnum;
+            tblock = (struct block *) BLOCK(bnum);
         }
 
         tblock->byte[tblock_offset++] = c;
@@ -75,6 +75,7 @@ int main(int argc, char **argv) {
     newfile_inode->i_blocks = iblocks;
 
     // Add directory entry
+    add_new_directory_entry(tpath_inode, inum, 'f', target_filename);
 
 
     free(target_pathname);

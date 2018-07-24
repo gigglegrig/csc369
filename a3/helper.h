@@ -3,6 +3,10 @@
 #ifndef CSC369_HELPER_H
 #define CSC369_HELPER_H
 
+#define BLOCK(x) (disk + EXT2_BLOCK_SIZE * (x))
+#define PAD(x) ((x) + ((4 - ((x) % 4)) % 4))
+#define MAX12 (12 + EXT2_BLOCK_SIZE / sizeof(int))
+
 int disk_fd;
 unsigned char * disk; // Disk
 struct ext2_super_block *sb; // Super block
@@ -29,5 +33,6 @@ void split_last_part_of_path(char *, char **, char **);
 unsigned int find_free_block();
 unsigned int find_free_inode();
 void add_block_to_inode(struct ext2_inode *inode, unsigned int block);
+void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, unsigned char file_type, char * name);
 
 #endif //CSC369_HELPER_H
