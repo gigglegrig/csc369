@@ -355,3 +355,28 @@ void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, 
 
 
 }
+
+
+int directory_block_iterator(int block_num, dirFunc func, int argc, void ** args) {
+    // This function performs function func(part, argc, args) on every directory entry of the input block
+    // Return value according to mapFunc function
+    struct ext2_dir_entry_2 * dir_ptr = (struct ext2_dir_entry_2 *) BLOCK(block_num);
+    int curr_pos = 0;
+
+    while (curr_pos < EXT2_BLOCK_SIZE) {
+        int func_result = -1;
+        if ((func_result = func(dir_ptr, argc, args)) != 0) {
+            // func did not work well
+            return 1;
+        }
+        curr_pos += dir_ptr->rec_len;
+        dir_ptr = (void *) dir_ptr + dir_ptr->rec_len;
+    }
+
+    return 0;
+}
+
+int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, void ** args) {
+    // args:
+    // 0 -
+}

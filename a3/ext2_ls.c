@@ -7,20 +7,14 @@
 
 
 
-void print_dir_block(int block_num) {
-    struct ext2_dir_entry_2 *dir = (struct ext2_dir_entry_2 *) BLOCK(block_num);
+int print_dir_entry(struct ext2_dir_entry_2 * dir, int argc, void ** args) {
+    char *print_name = malloc(sizeof(char) * dir->name_len + 1);
+    strncpy(print_name, dir->name, dir->name_len + 1);
+    print_name[dir->name_len] = '\0';
+    printf("%s\n", print_name);
+    free(print_name);
 
-    int curr_pos = 0;
-    while (curr_pos < EXT2_BLOCK_SIZE) {
-        char *print_name = malloc(sizeof(char) * dir->name_len + 1);
-        strncpy(print_name, dir->name, dir->name_len + 1);
-        print_name[dir->name_len] = '\0';
-        printf("%s\n", print_name);
-        free(print_name);
-
-        curr_pos = curr_pos + dir->rec_len;
-        dir = (void*) dir + dir->rec_len;
-    }
+    return 0;
 }
 
 int main(int argc, char **argv) {
@@ -36,7 +30,7 @@ int main(int argc, char **argv) {
     } else if (target->i_mode & EXT2_S_IFDIR) {
         // Only considered single indirect block according to Piazza
         for (int k = 0; k < IBLOCKS(target); k++) {
-            print_dir_block(get_block_from_inode(target, k));
+            directory_block_iterator(get_block_from_inode(target, k), print_dir_entry, NULL, NULL);
         }
     }
 
