@@ -36,9 +36,10 @@ unsigned int find_free_inode();
 void add_block_to_inode(struct ext2_inode *inode, unsigned int block);
 void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, unsigned char file_type, char * name);
 int get_block_from_inode(struct ext2_inode *inode, unsigned num);
+void set_dir_entry(struct ext2_dir_entry_2 * dir, unsigned int inode, unsigned short reclen, unsigned char file_type, char * name);
 
 // Experiments
-typedef int (*dirFunc)(struct ext2_dir_entry_2 *, int, void **);
-int directory_block_iterator(int block_num, dirFunc func, int argc, void ** args);
+typedef int (*dirFunc)(struct ext2_dir_entry_2 *, int, long *);
+int directory_block_iterator(int block_num, dirFunc func, int argc, long * args);
 
 #endif //CSC369_HELPER_H
