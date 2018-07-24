@@ -50,14 +50,18 @@ struct ext2_inode * get_inode_by_num(int inode_number){
 int check_inode_directory(struct ext2_inode * inode) {
     if (inode->i_mode & EXT2_S_IFDIR) {
         return 1;
-    } else if (inode->i_mode & EXT2_S_IFLNK) {
-        if (inode->i_block[0] != 0) {
-            struct ext2_dir_entry_2 *dir = (struct ext2_dir_entry_2 *) (disk + EXT2_BLOCK_SIZE * inode->i_block[0]);
-            if (dir->file_type == EXT2_FT_DIR && dir->name[0] == '.') {
-                return 1;
-            }
-        }
     }
+
+    // Commented since we don't need to check soft link to directories any more
+
+//    else if (inode->i_mode & EXT2_S_IFLNK) {
+//        if (inode->i_block[0] != 0) {
+//            struct ext2_dir_entry_2 *dir = (struct ext2_dir_entry_2 *) (disk + EXT2_BLOCK_SIZE * inode->i_block[0]);
+//            if (dir->file_type == EXT2_FT_DIR && dir->name[0] == '.') {
+//                return 1;
+//            }
+//        }
+//    }
 
     return 0;
 }
@@ -197,9 +201,10 @@ int get_bit(char bori, int location) {
     return (bitmap[byte] >> bit) & 1;
 }
 
-int find_free_block() {
-    for (int i = 1; i <= sb->s_blocks_count; i++) {
+unsigned int find_free_block() {
+    for (unsigned int i = 1; i <= sb->s_blocks_count; i++) {
         if (get_bit('b', i) == 0) {
+            set_bit('b', i, 1);
             return i;
         }
     }
@@ -207,9 +212,10 @@ int find_free_block() {
     return 0;
 }
 
-int find_free_inode() {
-    for (int i = 12; i <= sb->s_inodes_count; i++) {
+unsigned int find_free_inode() {
+    for (unsigned int i = 12; i <= sb->s_inodes_count; i++) {
         if (get_bit('i', i) == 0) {
+            set_bit('i', i, 1);
             return i;
         }
     }
@@ -217,8 +223,35 @@ int find_free_inode() {
     return 0;
 }
 
-void add_block_to_inode(struct ext2_inode *inode, int block) {
-    // Change block bitmap to occupied, update infos in bf
+void add_block_to_inode(struct ext2_inode *inode, unsigned int block) {
+    if (inode->i_blocks < 12) {
+        inode->i_block[inode->i_blocks] = block;
+    } else if (inode->i_blocks >= 12 && inode->i_blocks < 12 + EXT2_BLOCK_SIZE / sizeof(int)) {
+        // The single indirection block
+        struct block * tblock;
+
+        if (inode->i_block[12] == 0) {
+            // Assign new block
+            unsigned int nb = find_free_block(); // ???????Will it use some block other process is using????
+            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * nb;
+            memset(tblock, 0, EXT2_BLOCK_SIZE);
+            inode->i_block[12] = nb;
+        } else {
+            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * inode->i_block[12];
+        }
+
+        int curr_pos = 0;
+
+        while (curr_pos < EXT2_BLOCK_SIZE) {
+            int * intptr = (int *) tblock + curr_pos;
+            if (*intptr == 0) {
+                *intptr = block;
+                break;
+            }
+            curr_pos++;
+        }
+
+    }
 }
 
 struct ext2_inode * create_new_inode() {

@@ -26,8 +26,8 @@ struct ext2_inode * get_inode_by_path(struct ext2_inode *, char *);
 void set_bit(char bori, int location, unsigned char value);
 int get_bit(char bori, int location);
 void split_last_part_of_path(char *, char **, char **);
-int find_free_block();
-int find_free_inode();
-void add_block_to_inode(struct ext2_inode *inode, int block);
+unsigned int find_free_block();
+unsigned int find_free_inode();
+void add_block_to_inode(struct ext2_inode *inode, unsigned int block);
 
 #endif //CSC369_HELPER_H

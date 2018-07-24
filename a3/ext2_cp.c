@@ -39,32 +39,42 @@ int main(int argc, char **argv) {
     struct ext2_inode * newfile_inode = get_inode_by_num(inum);
     memset(newfile_inode, 0, sb->s_inode_size);
 
-    int bnum = find_free_block();
-    struct block * tblock = (struct block *) disk + EXT2_BLOCK_SIZE * bnum;
+    unsigned int bnum;
+    struct block * tblock = NULL;
     int tblock_offset = 0;
 
     // Copy file in binary
-    char c = fgetc(file);
+    unsigned int size = 0;
+    unsigned int iblocks = 0;
+    unsigned char c = fgetc(file);
     while (!feof(file)) {
+        if (tblock_offset == 0) {
+            bnum = find_free_block();
+            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * bnum;
+        }
+
         tblock->byte[tblock_offset++] = c;
+        size++;
         c = fgetc(file);
         if (tblock_offset == EXT2_BLOCK_SIZE) {
             // Get a new block
-            add_block_to_inode(bnum);
-            bnum = find_free_block();
-            tblock = (struct block *) disk + EXT2_BLOCK_SIZE * bnum;
+            add_block_to_inode(newfile_inode, bnum);
+            iblocks++;
             tblock_offset = 0;
         }
     }
 
     // Fill left space with 0
-    while (tblock_offset != 0) {
-        tblock->byte[tblock_offset++] = 0;
-        if (tblock_offset == EXT2_BLOCK_SIZE) {
-            add_block_to_inode(tfree_block);
-            tblock_offset = 0;
-        }
+    if (tblock_offset != 0) {
+        memset(tblock->byte + tblock_offset, 0, EXT2_BLOCK_SIZE - tblock_offset);
     }
+
+    newfile_inode->i_mode = EXT2_S_IFREG;
+    newfile_inode->i_size = size;
+    newfile_inode->i_links_count = 1;
+    newfile_inode->i_blocks = iblocks;
+
+    // Add directory entry
 
 
     free(target_pathname);
