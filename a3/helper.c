@@ -133,7 +133,7 @@ int find_last_char_n(char * string, char target) {
 }
 
 void split_last_part_of_path(char * path, char ** out_pathname, char ** out_filename) {
-    check_path_format(path);
+    //check_path_format(path);
 
     int last_slash = find_last_char_n(path, '/');
     if (last_slash + 1 == strlen(path)) {
@@ -170,14 +170,14 @@ void set_bit(char bori, int location, unsigned char value) {
     }
 
     unsigned char *bitmap = BLOCK(bit_pos);
-    int byte = location / (sizeof(unsigned int) * 8);
-    int bit = location % (sizeof(unsigned int) * 8);
+    int byte = location / (sizeof(unsigned char) * 8);
+    int bit = location % (sizeof(unsigned char) * 8);
 
-    if (value == 0 && get_bit(bori, location)) {
+    if (value == 0 && get_bit(bori, location + 1)) {
         // Set 1 to 0
         bitmap[byte] = bitmap[byte] & ((unsigned char) 0 << bit);
         (*count)--;
-    } else if (value == 1 && !(get_bit(bori, location))) {
+    } else if (value == 1 && !(get_bit(bori, location + 1))) {
         bitmap[byte] = bitmap[byte] | ((unsigned char) 1 << bit);
         (*count)++;
     }
@@ -195,14 +195,14 @@ int get_bit(char bori, int location) {
     }
 
     unsigned char *bitmap = BLOCK(bit_pos);
-    int byte = location / (sizeof(unsigned int) * 8);
-    int bit = location % (sizeof(unsigned int) * 8);
+    int byte = location / (sizeof(unsigned char) * 8);
+    int bit = location % (sizeof(unsigned char) * 8);
 
     return (bitmap[byte] >> bit) & 1;
 }
 
 unsigned int find_free_block() {
-    for (unsigned int i = 1; i <= sb->s_blocks_count; i++) {
+    for (unsigned int i = sb->s_r_blocks_count + 1; i <= sb->s_blocks_count; i++) {
         if (get_bit('b', i) == 0) {
             set_bit('b', i, 1);
             return i;
@@ -213,7 +213,7 @@ unsigned int find_free_block() {
 }
 
 unsigned int find_free_inode() {
-    for (unsigned int i = 12; i <= sb->s_inodes_count; i++) {
+    for (unsigned int i = 13; i <= sb->s_inodes_count; i++) {
         if (get_bit('i', i) == 0) {
             set_bit('i', i, 1);
             return i;
@@ -226,6 +226,7 @@ unsigned int find_free_inode() {
 void add_block_to_inode(struct ext2_inode *inode, unsigned int block) {
     if (inode->i_blocks < 12) {
         inode->i_block[inode->i_blocks] = block;
+        inode->i_blocks += EXT2_BLOCK_SIZE / 512;
     } else if (inode->i_blocks >= 12 && inode->i_blocks < MAX12) {
         // The single indirection block
         struct block * tblock;
@@ -246,6 +247,7 @@ void add_block_to_inode(struct ext2_inode *inode, unsigned int block) {
             int * intptr = (int *) tblock + curr_pos;
             if (*intptr == 0) {
                 *intptr = block;
+                inode->i_blocks += EXT2_BLOCK_SIZE / 512;
                 break;
             }
             curr_pos++;

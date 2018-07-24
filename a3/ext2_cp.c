@@ -19,6 +19,8 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+    check_path_format(argv[3]);
+
     // Parsing target path, we would want the second to last path, then we can determine if the user want to create a new file
     char * target_pathname = NULL;
     char * target_filename = NULL;
@@ -45,21 +47,19 @@ int main(int argc, char **argv) {
 
     // Copy file in binary
     unsigned int size = 0;
-    unsigned int iblocks = 0;
-    unsigned char c = fgetc(file);
+    unsigned char c;
+    //unsigned char c = fgetc(file);
     while (!feof(file)) {
         if (tblock_offset == 0) {
             bnum = find_free_block();
             tblock = (struct block *) BLOCK(bnum);
         }
-
+        c = fgetc(file);
         tblock->byte[tblock_offset++] = c;
         size++;
-        c = fgetc(file);
         if (tblock_offset == EXT2_BLOCK_SIZE) {
             // Get a new block
             add_block_to_inode(newfile_inode, bnum);
-            iblocks++;
             tblock_offset = 0;
         }
     }
@@ -67,15 +67,15 @@ int main(int argc, char **argv) {
     // Fill left space with 0
     if (tblock_offset != 0) {
         memset(tblock->byte + tblock_offset, 0, EXT2_BLOCK_SIZE - tblock_offset);
+        add_block_to_inode(newfile_inode, bnum);
     }
 
     newfile_inode->i_mode = EXT2_S_IFREG;
     newfile_inode->i_size = size;
     newfile_inode->i_links_count = 1;
-    newfile_inode->i_blocks = iblocks;
 
     // Add directory entry
-    add_new_directory_entry(tpath_inode, inum, 'f', target_filename);
+    add_new_directory_entry(tpath_inode, inum, EXT2_FT_REG_FILE, target_filename);
 
 
     free(target_pathname);
