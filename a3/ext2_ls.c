@@ -30,7 +30,7 @@ int main(int argc, char **argv) {
     } else if (target->i_mode & EXT2_S_IFDIR) {
         // Only considered single indirect block according to Piazza
         for (int k = 0; k < IBLOCKS(target); k++) {
-            directory_block_iterator(get_block_from_inode(target, k), print_dir_entry, 0, NULL);
+            directory_block_iterator(target, print_dir_entry, 0, NULL);
         }
     }
 

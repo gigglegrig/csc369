@@ -15,6 +15,7 @@ int group_num; // Block group number
 struct ext2_group_desc *gd; // (First) Group descriptor
 char * curr_dir_name;
 struct ext2_inode * root_inode;
+//struct ext2_dir_entry_2 * prev_dir_entry = NULL;
 
 struct block {
     unsigned char byte[EXT2_BLOCK_SIZE];
@@ -40,7 +41,8 @@ void set_dir_entry(struct ext2_dir_entry_2 * dir, unsigned int inode, unsigned s
 
 // Experiments
 typedef int (*dirFunc)(struct ext2_dir_entry_2 *, int, long *);
-int directory_block_iterator(int block_num, dirFunc func, int argc, long * args);
+//int directory_block_iterator(int block_num, dirFunc func, int argc, long * args);
+int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int argc, long * args);
 int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args);
 
 #endif //CSC369_HELPER_H
