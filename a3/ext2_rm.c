@@ -36,14 +36,18 @@ int main(int argc, char ** argv) {
     // Start deletion
     unsigned long target_inode_num = INODE_TO_NUM(find_result);
 
-    // Set blocks to free
-    for (unsigned int i = 0; i < IBLOCKS(find_result); i++) {
-        int target_block_num = get_block_from_inode(find_result, i);
-        set_bit('b', target_block_num, 0);
-    }
+    if (find_result->i_links_count == 1) {
+        // Set blocks to free
+        for (unsigned int i = 0; i < IBLOCKS(find_result); i++) {
+            int target_block_num = get_block_from_inode(find_result, i);
+            set_bit('b', target_block_num, 0);
+        }
 
-    // Set inode to free
-    set_bit('i', target_inode_num, 0);
+        // Set inode to free
+        set_bit('i', target_inode_num, 0);
+    } else {
+        find_result->i_links_count--;
+    }
 
     // Delete directory entry
     int res = directory_block_iterator(tpath_inode, remove_dir_entry, 1, &target_inode_num);
