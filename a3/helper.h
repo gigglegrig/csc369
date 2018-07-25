@@ -7,6 +7,8 @@
 #define PAD(x) ((x) + ((4 - ((x) % 4)) % 4))
 #define MAX12 (12 + EXT2_BLOCK_SIZE / sizeof(int))
 #define IBLOCKS(x) (((x)->i_blocks) / (EXT2_BLOCK_SIZE / 512))
+#define INODE_TO_NUM(x) ((struct ext2_inode *) (x) + 1 - (struct ext2_inode *) BLOCK(gd->bg_inode_table))
+#define NUM_TO_INODE(x) ((struct ext2_inode *) BLOCK(gd->bg_inode_table) + (x) - 1)
 
 int disk_fd;
 unsigned char * disk; // Disk
@@ -44,5 +46,6 @@ typedef int (*dirFunc)(struct ext2_dir_entry_2 *, int, long *);
 //int directory_block_iterator(int block_num, dirFunc func, int argc, long * args);
 int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int argc, long * args);
 int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args);
+int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args);
 
 #endif //CSC369_HELPER_H
