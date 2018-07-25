@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     newfile_inode->i_links_count = 1;
 
     // Add directory entry
-    add_new_directory_entry(tpath_inode, inum, EXT2_FT_REG_FILE, target_filename);
+    add_dir_entry_to_block(tpath_inode, inum, EXT2_FT_REG_FILE, target_filename);
 
 
     free(target_pathname);

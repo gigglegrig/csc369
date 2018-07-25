@@ -34,7 +34,7 @@ void split_last_part_of_path(char *, char **, char **);
 unsigned int find_free_block();
 unsigned int find_free_inode();
 void add_block_to_inode(struct ext2_inode *inode, unsigned int block);
-void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, unsigned char file_type, char * name);
+void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, unsigned char file_type, char *name);
 int get_block_from_inode(struct ext2_inode *inode, unsigned num);
 void set_dir_entry(struct ext2_dir_entry_2 * dir, unsigned int inode, unsigned short reclen, unsigned char file_type, char * name);
 
