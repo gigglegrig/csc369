@@ -10,7 +10,7 @@
 
 void check_argc(char * usage, int in, int target) {
     if(in != target) {
-        fprintf(stderr, usage);
+        fprintf(stderr, "%s", usage);
         exit(1);
     }
 }
@@ -42,9 +42,7 @@ void read_disk(char * filename) {
 }
 
 struct ext2_inode * get_inode_by_num(int inode_number){
-    int g_num = inode_number / sb->s_inodes_per_group;
     int i_num = inode_number % sb->s_inodes_per_group;
-    struct ext2_group_desc * target_gd = gd + g_num;
     return (struct ext2_inode *) BLOCK(gd->bg_inode_table) + i_num - 1;
 }
 
@@ -274,9 +272,11 @@ int get_block_from_inode(struct ext2_inode *inode, unsigned num) {
         int * intptr = (int *) BLOCK(inode->i_block[12]) + num - 12;
         return *intptr;
     }
+
+    return -1;
 }
 
-void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, unsigned char file_type, char * name) {
+void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, unsigned char file_type, char *name) {
     // Name must be NULL terminated!
     int req_space = PAD(8 + (int) strlen(name));
 
@@ -323,9 +323,8 @@ int directory_block_iterator(int block_num, dirFunc func, int argc, long * args)
     int curr_pos = 0;
 
     while (curr_pos < EXT2_BLOCK_SIZE) {
-        int func_result = -1;
-        if ((func_result = func(dir_ptr, argc, args)) != 0) {
-            // func did not work well
+        if (func(dir_ptr, argc, args)) {
+            // func returns 1, want to abort
             return 1;
         }
         curr_pos += dir_ptr->rec_len;
@@ -338,18 +337,18 @@ int directory_block_iterator(int block_num, dirFunc func, int argc, long * args)
 int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     // args:
     // 0 - required space,  1 - inode,  2 - reclen
-    // 3 - file_type,       4 - nname
+    // 3 - file_type,       4 - name
 
     // Calculate space
     int space = dir->rec_len - PAD(dir->name_len + 8);
-    int req_space = args[0];
+    int req_space = (int) args[0];
     if (space >= req_space) {
         if (args[2] == 0) {
             args[2] = space;
         }
         dir->rec_len -= space;
         dir = (void *) dir + PAD(dir->name_len + 8);
-        set_dir_entry(dir, args[1], args[2], args[3], args[4]);
+        set_dir_entry(dir, (unsigned int) args[1], (unsigned short)args[2], (unsigned char) args[3], (char *) args[4]);
         return 1;
     }
 
