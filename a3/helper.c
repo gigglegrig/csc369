@@ -279,26 +279,13 @@ int get_block_from_inode(struct ext2_inode *inode, unsigned num) {
 void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, unsigned char file_type, char *name) {
     // Name must be NULL terminated!
     int req_space = PAD(8 + (int) strlen(name));
-
     long parsed_args[5] = {req_space, inode, 0, file_type, (intptr_t) name};
 
-    int curr_bindex = 0;
-    //int curr_bindex = dir_inode->i_blocks - 1;
-    int curr_block = dir_inode->i_block[curr_bindex];
-
-    int res = -1;
-    while (curr_bindex < IBLOCKS(dir_inode)) {
-        res = directory_block_iterator(curr_block, add_dir_entry, 5, parsed_args);
-        if (res == 1) {
-            // Break, successfully inserted
-            break;
-        }
-        curr_bindex++;
-    }
+    int res = directory_block_iterator(dir_inode, add_dir_entry, 5, parsed_args);
 
     // Not inserted
     if (res == 0) {
-        if (curr_bindex >= MAX12) {
+        if (IBLOCKS(dir_inode) >= MAX12) {
             fprintf(stderr, "Not enough block space in directory entry.");
             exit(1);
         }
@@ -316,22 +303,37 @@ void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, un
 
 }
 
-int directory_block_iterator(int block_num, dirFunc func, int argc, long * args) {
+
+int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int argc, long * args) {
     // This function performs function func(part, argc, args) on every directory entry of the input block
     // Return value according to mapFunc function, 0 for continue, 1 for abort
-    struct ext2_dir_entry_2 * dir_ptr = (struct ext2_dir_entry_2 *) BLOCK(block_num);
+
+    if (!(dir_inode->i_mode & EXT2_S_IFDIR)) {
+        return -1;
+    }
+
+    struct ext2_dir_entry_2 * dir_ptr;
     int curr_pos = 0;
 
-    while (curr_pos < EXT2_BLOCK_SIZE) {
-        if (func(dir_ptr, argc, args)) {
-            // func returns 1, want to abort
-            return 1;
+    for (int i = 0; i < IBLOCKS(dir_inode); i++) {
+        dir_ptr = (struct ext2_dir_entry_2 *) BLOCK(dir_inode->i_block[i]);
+        dir_ptr = (void *) dir_ptr + curr_pos;
+
+        while (curr_pos < EXT2_BLOCK_SIZE) {
+            int res = func(dir_ptr, argc, args);
+            if (res) {
+                // func returns other than 0, want to abort
+                return res;
+            }
+            curr_pos += dir_ptr->rec_len;
+            dir_ptr = (void *) dir_ptr + dir_ptr->rec_len;
         }
-        curr_pos += dir_ptr->rec_len;
-        dir_ptr = (void *) dir_ptr + dir_ptr->rec_len;
+
+        curr_pos = (curr_pos >= EXT2_BLOCK_SIZE) ? curr_pos - EXT2_BLOCK_SIZE : curr_pos;
     }
 
     return 0;
+
 }
 
 int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
@@ -340,12 +342,10 @@ int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     // 3 - file_type,       4 - name
 
     // Calculate space
-    int space = dir->rec_len - PAD(dir->name_len + 8);
+    int space = (dir->rec_len > EXT2_BLOCK_SIZE) ? EXT2_BLOCK_SIZE : (dir->rec_len - PAD(dir->name_len + 8));
     int req_space = (int) args[0];
     if (space >= req_space) {
-        if (args[2] == 0) {
-            args[2] = space;
-        }
+        args[2] = (args[2] == 0) ? space : args[2];
         dir->rec_len -= space;
         dir = (void *) dir + PAD(dir->name_len + 8);
         set_dir_entry(dir, (unsigned int) args[1], (unsigned short)args[2], (unsigned char) args[3], (char *) args[4]);
@@ -356,9 +356,44 @@ int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
 }
 
 void set_dir_entry(struct ext2_dir_entry_2 * dir, unsigned int inode, unsigned short reclen, unsigned char file_type, char * name) {
+    //memset(dir, 0, reclen);
     dir->inode = inode;
     dir->rec_len = reclen;
     dir->name_len = (unsigned char) strlen(name);
     dir->file_type = file_type;
     strncpy(dir->name, name, strlen(name));
+}
+
+struct ext2_dir_entry_2 * prev_dir = NULL;
+
+int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
+    // Remove inode from dir_entry_block
+    // User have to provide an inode number
+
+    int del_inode = (int) args[0];
+
+    if (dir->inode == del_inode) {
+        // Delete this entry
+        if (prev_dir == NULL) {
+            // The first entry in the first block
+            if (dir->rec_len == EXT2_BLOCK_SIZE) {
+                // And this first block has this only entry...
+                // Let outer function handle this !!!
+                return 2;
+            } else {
+                // Move the next entry to the first
+                unsigned short ori_reclen = dir->rec_len;
+                struct ext2_dir_entry_2 * next_dir = (void *) dir + dir->rec_len;
+                memmove(dir, next_dir, next_dir->rec_len);
+                dir->rec_len += ori_reclen;
+            }
+        } else {
+            prev_dir->rec_len += dir->rec_len;
+        }
+
+        return 1;
+    }
+
+    prev_dir = dir;
+    return 0;
 }
