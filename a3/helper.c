@@ -94,6 +94,10 @@ struct ext2_inode * get_inode_by_path(struct ext2_inode * root, char * path) {
 }
 
 struct ext2_inode * find_file(struct ext2_inode * source, char * file) {
+    if (file == NULL || source == NULL) {
+        return NULL;
+    }
+
     // Cannot find file in a regular file, only can find in directory (Assume symbolic link on directory also turn on directory bit)
     if (check_inode_directory(source)) {
         // Only considered single indirect block according to Piazza
@@ -307,7 +311,6 @@ void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, un
 int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int argc, long * args) {
     // This function performs function func(part, argc, args) on every directory entry of the input block
     // Return value according to mapFunc function, 0 for continue, 1 for abort
-
     if (!(dir_inode->i_mode & EXT2_S_IFDIR)) {
         return -1;
     }
@@ -316,7 +319,8 @@ int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int ar
     int curr_pos = 0;
 
     for (int i = 0; i < IBLOCKS(dir_inode); i++) {
-        dir_ptr = (struct ext2_dir_entry_2 *) BLOCK(dir_inode->i_block[i]);
+        int dir_block_num = get_block_from_inode(dir_inode, i);
+
         dir_ptr = (void *) dir_ptr + curr_pos;
 
         while (curr_pos < EXT2_BLOCK_SIZE) {
@@ -370,7 +374,7 @@ int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     // Remove inode from dir_entry_block
     // User have to provide an inode number
 
-    int del_inode = (int) args[0];
+    unsigned long del_inode = (unsigned long) args[0];
 
     if (dir->inode == del_inode) {
         // Delete this entry
