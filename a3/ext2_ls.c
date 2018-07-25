@@ -7,7 +7,7 @@
 
 
 
-int print_dir_entry(struct ext2_dir_entry_2 * dir, int argc, void ** args) {
+int print_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     char *print_name = malloc(sizeof(char) * dir->name_len + 1);
     strncpy(print_name, dir->name, dir->name_len + 1);
     print_name[dir->name_len] = '\0';

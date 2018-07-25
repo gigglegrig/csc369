@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <errno.h>
 #include <zconf.h>
 #include "helper.h"
@@ -275,91 +276,49 @@ int get_block_from_inode(struct ext2_inode *inode, unsigned num) {
     }
 }
 
-//struct ext2_dir_entry_2 {
-//    unsigned int   inode;     /* Inode number */
-//    unsigned short rec_len;   /* Directory entry length */
-//    unsigned char  name_len;  /* Name length */
-//    unsigned char  file_type;
-//    char           name[];    /* File name, up to EXT2_NAME_LEN */
-//};
-
 void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, unsigned char file_type, char * name) {
     // Name must be NULL terminated!
     int req_space = PAD(8 + (int) strlen(name));
 
+    long parsed_args[5] = {req_space, inode, 0, file_type, (intptr_t) name};
+
     int curr_bindex = 0;
     //int curr_bindex = dir_inode->i_blocks - 1;
     int curr_block = dir_inode->i_block[curr_bindex];
-    struct ext2_dir_entry_2 * dir = (struct ext2_dir_entry_2 *) BLOCK(curr_block);
-    int curr_pos = 0;
 
-    while (curr_pos < EXT2_BLOCK_SIZE) {
-        int space;
-        if ((space = dir->rec_len - PAD(dir->name_len + 8)) > 0) {
-            // There's empty space in the dir_entry
-            if (space >= req_space) {
-                dir->rec_len = (unsigned short) PAD(dir->name_len + 8);
-                curr_pos += dir->rec_len;
-                dir = (void *) dir + dir->rec_len;
-
-                // Set new dir entry
-                dir->inode = inode;
-                dir->rec_len = (unsigned short) space;
-                dir->name_len = (unsigned char) strlen(name);
-                dir->file_type = file_type;
-                strncpy(dir->name, name, strlen(name));
-
-                break;
-            }
-
-            curr_pos += dir->rec_len;
-            dir = (void *) dir + dir->rec_len;
-
-        } else {
-            // No empty space
-            curr_pos += dir->rec_len;
-            dir = (void *) dir + dir->rec_len;
-
-            if (curr_pos >= EXT2_BLOCK_SIZE) {
-                // Finished this block size, find next
-                curr_bindex++;
-                if (curr_bindex < IBLOCKS(dir_inode)) {
-                    // Next block is still in blocks
-                    curr_block = get_block_from_inode(dir_inode, curr_bindex);
-                    dir = (struct ext2_dir_entry_2 *) BLOCK(curr_block);
-                    curr_pos = 0;
-                } else if (curr_bindex < MAX12) {
-                    // curr_bindex bigger than used blocks, Need a new block
-                    unsigned int nblock_num = find_free_block();
-                    struct block * nblock = (struct block *) BLOCK(nblock_num);
-                    dir = (struct ext2_dir_entry_2 *) nblock;
-
-                    // Set new dir entry
-                    dir->inode = inode;
-                    dir->rec_len = EXT2_BLOCK_SIZE;
-                    dir->name_len = (unsigned char) strlen(name);
-                    dir->file_type = file_type;
-                    strncpy(dir->name, name, strlen(name));
-
-                    // Add this new block to inode
-                    add_block_to_inode(dir_inode, nblock_num);
-
-                    break;
-                } else {
-                    fprintf(stderr, "Not enough block space in directory entry.");
-                    exit(1);
-                }
-            }
+    int res = -1;
+    while (curr_bindex < IBLOCKS(dir_inode)) {
+        res = directory_block_iterator(curr_block, add_dir_entry, 5, parsed_args);
+        if (res == 1) {
+            // Break, successfully inserted
+            break;
         }
+        curr_bindex++;
     }
 
+    // Not inserted
+    if (res == 0) {
+        if (curr_bindex >= MAX12) {
+            fprintf(stderr, "Not enough block space in directory entry.");
+            exit(1);
+        }
+        // create new block
+        unsigned int nblock_num = find_free_block();
+        struct block * nblock = (struct block *) BLOCK(nblock_num);
+        struct ext2_dir_entry_2 * dir = (struct ext2_dir_entry_2 *) nblock;
+
+        // Set new dir entry
+        set_dir_entry(dir, inode, EXT2_BLOCK_SIZE, file_type, name);
+
+        // Add this new block to inode
+        add_block_to_inode(dir_inode, nblock_num);
+    }
 
 }
 
-
-int directory_block_iterator(int block_num, dirFunc func, int argc, void ** args) {
+int directory_block_iterator(int block_num, dirFunc func, int argc, long * args) {
     // This function performs function func(part, argc, args) on every directory entry of the input block
-    // Return value according to mapFunc function
+    // Return value according to mapFunc function, 0 for continue, 1 for abort
     struct ext2_dir_entry_2 * dir_ptr = (struct ext2_dir_entry_2 *) BLOCK(block_num);
     int curr_pos = 0;
 
@@ -376,7 +335,31 @@ int directory_block_iterator(int block_num, dirFunc func, int argc, void ** args
     return 0;
 }
 
-int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, void ** args) {
+int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     // args:
-    // 0 -
+    // 0 - required space,  1 - inode,  2 - reclen
+    // 3 - file_type,       4 - nname
+
+    // Calculate space
+    int space = dir->rec_len - PAD(dir->name_len + 8);
+    int req_space = args[0];
+    if (space >= req_space) {
+        if (args[2] == 0) {
+            args[2] = space;
+        }
+        dir->rec_len -= space;
+        dir = (void *) dir + PAD(dir->name_len + 8);
+        set_dir_entry(dir, args[1], args[2], args[3], args[4]);
+        return 1;
+    }
+
+    return 0;
+}
+
+void set_dir_entry(struct ext2_dir_entry_2 * dir, unsigned int inode, unsigned short reclen, unsigned char file_type, char * name) {
+    dir->inode = inode;
+    dir->rec_len = reclen;
+    dir->name_len = (unsigned char) strlen(name);
+    dir->file_type = file_type;
+    strncpy(dir->name, name, strlen(name));
 }
