@@ -41,5 +41,6 @@ void set_dir_entry(struct ext2_dir_entry_2 * dir, unsigned int inode, unsigned s
 // Experiments
 typedef int (*dirFunc)(struct ext2_dir_entry_2 *, int, long *);
 int directory_block_iterator(int block_num, dirFunc func, int argc, long * args);
+int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args);
 
 #endif //CSC369_HELPER_H

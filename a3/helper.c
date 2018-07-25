@@ -280,12 +280,11 @@ void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, 
     // Name must be NULL terminated!
     int req_space = PAD(8 + (int) strlen(name));
 
-    long parsed_args[5] = {0, inode, 0, file_type, (intptr_t) name};
+    long parsed_args[5] = {req_space, inode, 0, file_type, (intptr_t) name};
 
     int curr_bindex = 0;
     //int curr_bindex = dir_inode->i_blocks - 1;
     int curr_block = dir_inode->i_block[curr_bindex];
-    struct ext2_dir_entry_2 * dir = (struct ext2_dir_entry_2 *) BLOCK(curr_block);
 
     int res = -1;
     while (curr_bindex < IBLOCKS(dir_inode)) {
@@ -306,7 +305,7 @@ void add_new_directory_entry(struct ext2_inode * dir_inode, unsigned int inode, 
         // create new block
         unsigned int nblock_num = find_free_block();
         struct block * nblock = (struct block *) BLOCK(nblock_num);
-        dir = (struct ext2_dir_entry_2 *) nblock;
+        struct ext2_dir_entry_2 * dir = (struct ext2_dir_entry_2 *) nblock;
 
         // Set new dir entry
         set_dir_entry(dir, inode, EXT2_BLOCK_SIZE, file_type, name);
@@ -345,6 +344,11 @@ int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     int space = dir->rec_len - PAD(dir->name_len + 8);
     int req_space = args[0];
     if (space >= req_space) {
+        if (args[2] == 0) {
+            args[2] = space;
+        }
+        dir->rec_len -= space;
+        dir = (void *) dir + PAD(dir->name_len + 8);
         set_dir_entry(dir, args[1], args[2], args[3], args[4]);
         return 1;
     }
