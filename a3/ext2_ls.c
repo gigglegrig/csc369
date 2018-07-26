@@ -2,10 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <zconf.h>
-#include "ext2.h"
 #include "helper.h"
-
-
 
 int print_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     char *print_name = malloc(sizeof(char) * dir->name_len + 1);

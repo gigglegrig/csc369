@@ -5,13 +5,11 @@
 #include <zconf.h>
 #include <string.h>
 #include <errno.h>
-#include "ext2.h"
 #include "helper.h"
 
 
 int main(int argc, char **argv) {
     check_argc("Usage: ext2_cp <image file name> <file on native os> <absolute path on ext2 disk>\n", argc, 4);
-    read_disk(argv[1]);
 
     FILE * file = fopen(argv[2], "rb");
     if (file == NULL) {
@@ -21,6 +19,8 @@ int main(int argc, char **argv) {
     }
 
     check_path_format(argv[3]);
+
+    read_disk(argv[1]);
 
     // Parsing target path, we would want the second to last path, then we can determine if the user want to create a new file
     char * target_pathname = NULL;

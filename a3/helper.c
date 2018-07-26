@@ -183,11 +183,11 @@ void set_bit(char bori, int location, unsigned char value) {
 
     if (value == 0 && get_bit(bori, location + 1)) {
         // Set 1 to 0
-        bitmap[byte] = bitmap[byte] & ((unsigned char) 0 << bit);
-        (*count)--;
+        bitmap[byte] = bitmap[byte] & (~((unsigned char) 1 << bit));
+        (*count)++;
     } else if (value == 1 && !(get_bit(bori, location + 1))) {
         bitmap[byte] = bitmap[byte] | ((unsigned char) 1 << bit);
-        (*count)++;
+        (*count)--;
     }
 }
 
@@ -373,32 +373,77 @@ struct ext2_dir_entry_2 * prev_dir = NULL;
 int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     // Remove inode from dir_entry_block
     // User have to provide an inode number
+    // If argc == 0, means no check, delete every entry in the current dir
 
-    unsigned long del_inode = (unsigned long) args[0];
 
-    if (dir->inode == del_inode) {
-        // Delete this entry
-        if (prev_dir == NULL) {
-            // The first entry in the first block
-            if (dir->rec_len == EXT2_BLOCK_SIZE) {
-                // And this first block has this only entry...
-                // Let outer function handle this !!!
-                // However actually this never happens?
-                return 2;
-            } else {
-                // Move the next entry to the first
-                unsigned short ori_reclen = dir->rec_len;
-                struct ext2_dir_entry_2 * next_dir = (void *) dir + dir->rec_len;
-                memmove(dir, next_dir, next_dir->rec_len);
-                dir->rec_len += ori_reclen;
-            }
-        } else {
-            prev_dir->rec_len += dir->rec_len;
+    unsigned long del_inode_num = 0;
+    if (argc != 0) {
+        // In this case, function is assigned an inode number to delete, if dir not match with it, continue the loop
+        del_inode_num = (unsigned long) args[0];
+
+        if (dir->inode != del_inode_num) {
+            prev_dir = dir;
+            return 0;
         }
-
-        return 1;
+    } else {
+        // Not assigned, delete every entry
+        del_inode_num = dir->inode;
     }
 
-    prev_dir = dir;
-    return 0;
+    // In both cases, dir matches with the inode number that we want to delete now
+
+
+    struct ext2_inode * del_inode = NUM_TO_INODE(del_inode_num);
+
+    if (del_inode->i_mode & EXT2_S_IFDIR) {
+        if (!(CHECKDOT(dir) || CHECKDOTDOT(dir))) {
+            // If dir is . or .. we do not recursively delete the directory, just deduct link count
+            directory_block_iterator(del_inode, remove_dir_entry, 0, NULL);
+        }
+    }
+
+    // Deduct link count
+    del_inode->i_links_count--;
+
+    // If no more links, free blocks and inode.
+    if (del_inode->i_links_count == 0) {
+        // Set blocks to free
+        for (unsigned int i = 0; i < IBLOCKS(del_inode); i++) {
+            int target_block_num = get_block_from_inode(del_inode, i);
+            set_bit('b', target_block_num, 0);
+        }
+
+        // Set inode to free
+        set_bit('i', del_inode_num, 0);
+        memset(del_inode, 0, sb->s_inode_size);
+    }
+
+    // If argc == 0, then must recursively delete every dir entry,
+    // meaningless to delete every entry one by one, just deduct link count and free inode and blocks
+    if (argc == 0) {
+        return 0; // 0 since we want the iterator to move on
+    }
+
+    // Delete this entry
+    if (prev_dir == NULL) {
+        // The first entry in the first block
+        if (dir->rec_len == EXT2_BLOCK_SIZE) {
+            // And this first block has this only entry...
+            // Let outer function handle this !!!
+            // Didn't actually remove the "." entry (always be the first), however link count is deducted
+            return 2;
+        } else {
+            // Move the next entry to the first
+            unsigned short ori_reclen = dir->rec_len;
+            struct ext2_dir_entry_2 *next_dir = (void *) dir + dir->rec_len;
+            memmove(dir, next_dir, next_dir->rec_len);
+            dir->rec_len += ori_reclen;
+        }
+    } else {
+        prev_dir->rec_len += dir->rec_len;
+    }
+
+
+    return 1;
+
 }
