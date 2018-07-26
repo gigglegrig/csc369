@@ -35,36 +35,10 @@ void read_disk(char * filename) {
     }
 
     sb = (struct ext2_super_block *) BLOCK(1);
-    group_num = (sb->s_blocks_count - sb->s_first_data_block - 1) / sb->s_blocks_per_group + 1;
     gd = (struct ext2_group_desc *) BLOCK(2);
-    root_inode = get_inode_by_num(2);
+    root_inode = NUM_TO_INODE(2);
     curr_dir_name = "/";
 }
-
-struct ext2_inode * get_inode_by_num(int inode_number){
-    int i_num = inode_number % sb->s_inodes_per_group;
-    return (struct ext2_inode *) BLOCK(gd->bg_inode_table) + i_num - 1;
-}
-
-int check_inode_directory(struct ext2_inode * inode) {
-    if (inode->i_mode & EXT2_S_IFDIR) {
-        return 1;
-    }
-
-    // Commented since we don't need to check soft link to directories any more
-
-//    else if (inode->i_mode & EXT2_S_IFLNK) {
-//        if (inode->i_block[0] != 0) {
-//            struct ext2_dir_entry_2 *dir = (struct ext2_dir_entry_2 *) (disk + EXT2_BLOCK_SIZE * inode->i_block[0]);
-//            if (dir->file_type == EXT2_FT_DIR && dir->name[0] == '.') {
-//                return 1;
-//            }
-//        }
-//    }
-
-    return 0;
-}
-
 
 struct ext2_inode * get_inode_by_path(struct ext2_inode * root, char * path) {
     check_path_format(path);
@@ -99,7 +73,7 @@ struct ext2_inode * find_file(struct ext2_inode * source, char * file) {
     }
 
     // Cannot find file in a regular file, only can find in directory (Assume symbolic link on directory also turn on directory bit)
-    if (check_inode_directory(source)) {
+    if (INODE_IFDIR(source)) {
         // Only considered single indirect block according to Piazza
         for (int k = 0; k < 12; k++) {
             // If block exists
@@ -112,7 +86,7 @@ struct ext2_inode * find_file(struct ext2_inode * source, char * file) {
                     // Find the target file's inode
                     if (strncmp(file, dir->name, strlen(file)) == 0) {
                         // Since inode is 1-based counting, we deduct 1 here
-                        return get_inode_by_num(dir->inode);
+                        return NUM_TO_INODE(dir->inode);
                     }
 
                     curr_pos = curr_pos + dir->rec_len;
@@ -390,21 +364,18 @@ int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
         del_inode_num = dir->inode;
     }
 
-    // In both cases, dir matches with the inode number that we want to delete now
-
+    // In both cases above, dir matches with the inode number that we want to delete now
 
     struct ext2_inode * del_inode = NUM_TO_INODE(del_inode_num);
 
     if (!(CHECKDOT(dir) || CHECKDOTDOT(dir))) {
         if (del_inode->i_mode & EXT2_S_IFDIR) {
-            int count = 0;
+            long count = 0;
             directory_block_iterator(del_inode, count_subfolder, 1, &count);
-            int hardlink = del_inode->i_links_count - 2 - count;
+            long hardlink = del_inode->i_links_count - 2 - count;
             if (hardlink == 0) {
-                //if () {
                 // If dir is . or .. we do not recursively delete the directory, just deduct link count
                 directory_block_iterator(del_inode, remove_dir_entry, 0, NULL);
-                //}
             }
         }
     }
