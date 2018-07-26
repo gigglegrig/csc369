@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
 
     // Find a new inode
     unsigned int inum = find_free_inode();
-    struct ext2_inode * newfile_inode = get_inode_by_num(inum);
+    struct ext2_inode * newfile_inode = NUM_TO_INODE(inum);
     memset(newfile_inode, 0, sb->s_inode_size);
 
     unsigned int bnum;
