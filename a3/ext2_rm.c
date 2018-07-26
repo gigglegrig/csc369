@@ -37,7 +37,7 @@ int main(int argc, char ** argv) {
     }
 
     // Start deletion
-    unsigned long target_inode_num = INODE_TO_NUM(find_result);
+    long target_inode_num = INODE_TO_NUM(find_result);
 
     // Delete directory entry, as well as free inode and blocks
     // since you can't remove . and .. the first dir block will never be empty.

@@ -68,7 +68,7 @@ int main(int argc, char ** argv) {
 
 
     // Start deletion
-    unsigned long target_inode_num = INODE_TO_NUM(find_result);
+    long target_inode_num = INODE_TO_NUM(find_result);
     directory_block_iterator(tpath_inode, remove_dir_entry, 1, &target_inode_num);
 
 
