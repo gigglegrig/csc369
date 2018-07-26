@@ -320,7 +320,7 @@ int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int ar
 
     for (int i = 0; i < IBLOCKS(dir_inode); i++) {
         int dir_block_num = get_block_from_inode(dir_inode, i);
-
+        dir_ptr = (struct ext2_dir_entry_2 *) BLOCK(dir_block_num);
         dir_ptr = (void *) dir_ptr + curr_pos;
 
         while (curr_pos < EXT2_BLOCK_SIZE) {
@@ -383,6 +383,7 @@ int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
             if (dir->rec_len == EXT2_BLOCK_SIZE) {
                 // And this first block has this only entry...
                 // Let outer function handle this !!!
+                // However actually this never happens?
                 return 2;
             } else {
                 // Move the next entry to the first

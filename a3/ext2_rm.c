@@ -36,7 +36,8 @@ int main(int argc, char ** argv) {
     // Start deletion
     unsigned long target_inode_num = INODE_TO_NUM(find_result);
 
-    if (find_result->i_links_count == 1) {
+    find_result->i_links_count--;
+    if (find_result->i_links_count == 0) {
         // Set blocks to free
         for (unsigned int i = 0; i < IBLOCKS(find_result); i++) {
             int target_block_num = get_block_from_inode(find_result, i);
@@ -45,34 +46,12 @@ int main(int argc, char ** argv) {
 
         // Set inode to free
         set_bit('i', target_inode_num, 0);
-    } else {
-        find_result->i_links_count--;
     }
 
-    // Delete directory entry
-    int res = directory_block_iterator(tpath_inode, remove_dir_entry, 1, &target_inode_num);
+    // Delete directory entry, since you can't remove . and .. the first dir block will never be empty.
+    // Thus do not need to handle return value 2.
+    directory_block_iterator(tpath_inode, remove_dir_entry, 1, &target_inode_num);
 
-    if (res == 2) {
-        // Release iblock[0]
-        tpath_inode->i_blocks -= EXT2_BLOCK_SIZE / 512;
-        set_bit('b', tpath_inode->i_block[0], 0);
-
-        // An empty block can be in the middle but not the front
-        tpath_inode->i_block[0] = tpath_inode->i_block[1];
-        tpath_inode->i_block[1] = 0;
-
-        if (tpath_inode->i_block[0] != 0) {
-            struct ext2_dir_entry_2 * dir_entry = (struct ext2_dir_entry_2 *) BLOCK(tpath_inode->i_block[0]);
-            int curr_pos = dir_entry->rec_len;
-
-            while (curr_pos < EXT2_BLOCK_SIZE) {
-                dir_entry = (void *) dir_entry + dir_entry->rec_len;
-                curr_pos += dir_entry->rec_len;
-            }
-
-            dir_entry->rec_len += EXT2_BLOCK_SIZE;
-        }
-    }
 
     free(target_filename);
     free(target_pathname);
