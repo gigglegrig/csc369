@@ -395,10 +395,17 @@ int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
 
     struct ext2_inode * del_inode = NUM_TO_INODE(del_inode_num);
 
-    if (del_inode->i_mode & EXT2_S_IFDIR) {
-        if (!(CHECKDOT(dir) || CHECKDOTDOT(dir))) {
-            // If dir is . or .. we do not recursively delete the directory, just deduct link count
-            directory_block_iterator(del_inode, remove_dir_entry, 0, NULL);
+    if (!(CHECKDOT(dir) || CHECKDOTDOT(dir))) {
+        if (del_inode->i_mode & EXT2_S_IFDIR) {
+            int count = 0;
+            directory_block_iterator(del_inode, count_subfolder, 1, &count);
+            int hardlink = del_inode->i_links_count - 2 - count;
+            if (hardlink == 0) {
+                //if () {
+                // If dir is . or .. we do not recursively delete the directory, just deduct link count
+                directory_block_iterator(del_inode, remove_dir_entry, 0, NULL);
+                //}
+            }
         }
     }
 
@@ -446,4 +453,12 @@ int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
 
     return 1;
 
+}
+
+int count_subfolder(struct ext2_dir_entry_2 * dir, int argc, long * args) {
+    if (!(CHECKDOT(dir) || CHECKDOTDOT(dir)) && dir->file_type == EXT2_FT_DIR) {
+        args[0]++;
+    }
+
+    return 0;
 }
