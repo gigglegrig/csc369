@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <memory.h>
 #include "helper.h"
 #include "ext2.h"
 
@@ -46,6 +47,7 @@ int main(int argc, char ** argv) {
 
         // Set inode to free
         set_bit('i', target_inode_num, 0);
+        memset(find_result, 0, sb->s_inode_size);
     }
 
     // Delete directory entry, since you can't remove . and .. the first dir block will never be empty.
