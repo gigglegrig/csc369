@@ -9,6 +9,9 @@
 #define IBLOCKS(x) (((x)->i_blocks) / (EXT2_BLOCK_SIZE / 512))
 #define INODE_TO_NUM(x) ((struct ext2_inode *) (x) + 1 - (struct ext2_inode *) BLOCK(gd->bg_inode_table))
 #define NUM_TO_INODE(x) ((struct ext2_inode *) BLOCK(gd->bg_inode_table) + (x) - 1)
+#define INODE_IFDIR(x) ((x)->i_mode & EXT2_S_IFDIR)
+#define CHECKDOT(x) ((x)->name_len == 1 && (x)->name[0] == '.')
+#define CHECKDOTDOT(x) ((x)->name_len == 2 && (x)->name[0] == '.' && (x)->name[1] == '.')
 
 int disk_fd;
 unsigned char * disk; // Disk
