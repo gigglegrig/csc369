@@ -30,6 +30,11 @@ int main(int argc, char ** argv) {
 
     check_path_format(in_path);
 
+    if (strlen(in_path) == 1) {
+        fprintf(stderr, "\"/\" may not be removed\n");
+        exit(1);
+    }
+
     read_disk(argv[1]);
 
     char * target_pathname = NULL;
@@ -45,6 +50,14 @@ int main(int argc, char ** argv) {
             target_filename = tmp_file;
             target_pathname = tmp_path;
         }
+    }
+
+    if ((strlen(target_filename) == 1 && target_filename[0] == '.') ||
+            (strlen(target_filename) == 2 && target_filename[0] == '.' && target_filename[1] == '.')) {
+        free(target_filename);
+        free(target_pathname);
+        fprintf(stderr, "\".\" and \"..\" may not be removed\n");
+        exit(1);
     }
 
     struct ext2_inode * tpath_inode = get_inode_by_path(root_inode, target_pathname);

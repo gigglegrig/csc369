@@ -50,5 +50,6 @@ typedef int (*dirFunc)(struct ext2_dir_entry_2 *, int, long *);
 int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int argc, long * args);
 int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args);
 int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args);
+int count_subfolder(struct ext2_dir_entry_2 * dir, int argc, long * args);
 
 #endif //CSC369_HELPER_H
