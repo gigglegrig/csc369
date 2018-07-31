@@ -10,6 +10,9 @@ ext2_cp :  ext2_cp.o helper.o
 ext2_ln :  ext2_ln.o helper.o
 	gcc -Wall -g -o ext2_ln $^
 
+ext2_mkdir :  ext2_mkdir.o helper.o
+	gcc -Wall -g -o ext2_mkdir $^
+
 ext2_rm :  ext2_rm.o helper.o
 	gcc -Wall -g -o ext2_rm $^
 
