@@ -107,7 +107,7 @@ int main(int argc, char ** argv){
     if (IS_HARDLINK) {
         add_dir_entry_to_block(tpath_inode, oinode_num, EXT2_FT_REG_FILE, target_filename);     // new dir_entry pointing to same inode
         find_original->i_links_count++;     // increment original file_inode link_count
-    } else if (!IS_HARDLINK) {
+    } else {
         // path name length cannot exceed block size
         if (strlen(in_path) + 1 > EXT2_BLOCK_SIZE ) {
             fprintf(stderr, "Path name too long\n");
