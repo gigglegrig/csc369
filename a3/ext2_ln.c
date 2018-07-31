@@ -7,10 +7,10 @@
 #include "helper.h"
 
 int main(int argc, char ** argv){
-    char * usage = "Usage: ext2_ln <image file name> [-s] <original file path> <target file path>\n";
+    char * usage = "Usage: ext2_ln <image file name> [-s] <absolute path to original file> <absolute path to target file>\n";
     char * in_path;
     char * out_path;
-    int IS_HARDLINK = 1;
+    int IS_HARDLINK = 0;
 
     if (argc == 4) {
         // hardlink
