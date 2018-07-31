@@ -128,7 +128,7 @@ int main(int argc, char ** argv){
         struct block * tblock = (struct block *) BLOCK(bnum);
         memset(tblock->byte, 0, EXT2_BLOCK_SIZE);
 
-        //copy path to new block
+        // modify softlink_inode
         memcpy(tblock->byte, in_path, (strlen(in_path) + 1) );
         add_block_to_inode(slink_inode, bnum);
         slink_inode->i_mode = EXT2_S_IFLNK;
@@ -138,13 +138,14 @@ int main(int argc, char ** argv){
         slink_inode->i_links_count = 1;
         slink_inode->i_atime = slink_inode->i_ctime = slink_inode->i_atime = current_time();
 
-     //TODO add slink_inode's dir_entry to target_path dir_inode, modify dir_entry file_type and name.
-
-
+        // add dir_entry to target path inode
+        add_dir_entry_to_block(tpath_inode, oinode_num, EXT2_FT_SYMLINK, target_filename);
     }
 
+    free(target_filename);
+    free(target_pathname);
+    free(original_filename);
+    free(original_pathname);
 
-
-
-
+    return 0;
 }
