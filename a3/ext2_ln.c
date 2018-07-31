@@ -48,6 +48,14 @@ int main(int argc, char ** argv){
         exit(EISDIR);
     }
 
+    // according to piazza @ 506, check file name length
+    if (strlen(original_filename) >  NAME_MAX) {
+        fprintf(stderr, "Original file name too long\n");
+        free(original_filename);
+        free(original_pathname);
+        exit(ENAMETOOLONG);
+    }
+
     // source file doesn't exist
     struct ext2_inode * opath_inode = get_inode_by_path(root_inode, original_pathname);     //src path dir_inode
     struct ext2_inode * find_original = find_file(opath_inode, original_filename);     // src file_inode
@@ -67,6 +75,16 @@ int main(int argc, char ** argv){
         free(original_pathname);
         free(target_pathname);
         exit(EISDIR);
+    }
+
+    // according to piazza @ 506, check file name length
+    if (strlen(target_filename) > NAME_MAX) {
+        fprintf(stderr, "Target file name too long\n");
+        free(target_filename);
+        free(target_pathname);
+        free(original_filename);
+        free(original_pathname);
+        exit(ENAMETOOLONG);
     }
 
     // target file cannot exist
@@ -90,6 +108,38 @@ int main(int argc, char ** argv){
         add_dir_entry_to_block(tpath_inode, oinode_num, EXT2_FT_REG_FILE, target_filename);     // new dir_entry pointing to same inode
         find_original->i_links_count++;     // increment original file_inode link_count
     } else if (!IS_HARDLINK) {
+        // path name length cannot exceed block size
+        if (strlen(in_path) + 1 > EXT2_BLOCK_SIZE ) {
+            fprintf(stderr, "Path name too long\n");
+            free(target_filename);
+            free(target_pathname);
+            free(original_filename);
+            free(original_pathname);
+            exit(ENAMETOOLONG);
+        }
+
+        // find new softlink_inode and init to NULL
+        unsigned int inum = find_free_inode();
+        struct ext2_inode * slink_inode = NUM_TO_INODE(inum);
+        memset(slink_inode, 0, sb->s_inode_size);
+
+        // find a empty block for path and init to NULL
+        unsigned int bnum = find_free_block();
+        struct block * tblock = (struct block *) BLOCK(bnum);
+        memset(tblock->byte, 0, EXT2_BLOCK_SIZE);
+
+        //copy path to new block
+        memcpy(tblock->byte, in_path, (strlen(in_path) + 1) );
+        add_block_to_inode(slink_inode, bnum);
+        slink_inode->i_mode = EXT2_S_IFLNK;
+
+        unsigned int size = (unsigned int) (strlen(in_path) + 1);
+        slink_inode->i_size = size;
+        slink_inode->i_links_count = 1;
+        slink_inode->i_atime = slink_inode->i_ctime = slink_inode->i_atime = current_time();
+
+     //TODO add slink_inode's dir_entry to target_path dir_inode, modify dir_entry file_type and name.
+
 
     }
 
