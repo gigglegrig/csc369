@@ -5,6 +5,7 @@
 #include <zconf.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include "helper.h"
 
 
@@ -21,6 +22,8 @@ int main(int argc, char **argv) {
     check_path_format(argv[3]);
 
     read_disk(argv[1]);
+
+    check_file_size(argv[2]);
 
     // Parsing target path, we would want the second to last path, then we can determine if the user want to create a new file
     char * target_pathname = NULL;
@@ -70,8 +73,17 @@ int main(int argc, char **argv) {
 
     }
 
+    if (strlen(target_filename) > NAME_MAX) {
+        fprintf(stderr, "Original file name too long\n");
+        free(original_filename);
+        free(original_pathname);
+        return ENAMETOOLONG;
+    }
+
     tpath_inode = get_inode_by_path(root_inode, target_pathname);
     if (!(tpath_inode->i_mode & EXT2_S_IFDIR)) {
+        free(original_filename);
+        free(original_pathname);
         printf("No such file or directory\n");
         exit(ENOENT);
     }
@@ -79,12 +91,20 @@ int main(int argc, char **argv) {
     // Check if already have a file with the same name
     find_result = find_file(tpath_inode, target_filename);
     if (find_result != NULL) {
+        free(original_filename);
+        free(original_pathname);
         fprintf(stderr, "File already exist.\n");
         exit(EEXIST);
     }
 
     // Find a new inode
     unsigned int inum = find_free_inode();
+    if (inum == 0) {
+        free(original_filename);
+        free(original_pathname);
+        fprintf(stderr, "No free inode.\n");
+        exit(1);
+    }
     struct ext2_inode * newfile_inode = NUM_TO_INODE(inum);
     memset(newfile_inode, 0, sb->s_inode_size);
 
@@ -99,6 +119,19 @@ int main(int argc, char **argv) {
     while (!feof(file)) {
         if (tblock_offset == 0) {
             bnum = find_free_block();
+            if (bnum == 0) {
+                // Set blocks to free
+                for (unsigned int i = 0; i < IBLOCKS(newfile_inode); i++) {
+                    int target_block_num = get_block_from_inode(del_inode, i);
+                    set_bit('b', target_block_num, 0);
+                }
+
+                // Set inode to free
+                set_bit('i', del_inode_num, 0);
+                //memset(del_inode, 0, sb->s_inode_size);
+                del_inode->i_dtime = current_time();
+                del_inode->i_size = 0;
+            }
             tblock = (struct block *) BLOCK(bnum);
         }
         c = fgetc(file);
