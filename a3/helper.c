@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <zconf.h>
 #include <time.h>
+#include <sys/stat.h>
 #include "helper.h"
 
 void check_argc(char * usage, int in, int target) {
@@ -394,7 +395,9 @@ int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
 
         // Set inode to free
         set_bit('i', del_inode_num, 0);
-        memset(del_inode, 0, sb->s_inode_size);
+        //memset(del_inode, 0, sb->s_inode_size);
+        del_inode->i_dtime = current_time();
+        del_inode->i_size = 0;
     }
 
     // If argc == 0, then must recursively delete every dir entry,
@@ -446,4 +449,18 @@ unsigned int current_time() {
     }
 
     return (unsigned int) current_time;
+}
+
+
+void check_file_size(char* filename) {
+    struct stat stat_buf;
+    stat(filename,&stat_buf);
+    int size = stat_buf.st_size;
+
+    int mod = size % 1024 > 0 ? 1 : 0;
+
+    if (size / 1024 + mod < sb->s_free_blocks_count) {
+        fprintf(stderr, "Not enough space.\n");
+        exit(ENOSPC);
+    }
 }
