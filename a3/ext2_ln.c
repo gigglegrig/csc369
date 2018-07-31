@@ -41,7 +41,10 @@ int main(int argc, char ** argv){
     char * original_filename = NULL;
 
     // source path cannot be directory path
-    split_last_part_of_path(out_path, &original_pathname, &original_filename);
+    split_last_part_of_path(in_path, &original_pathname, &original_filename);
+
+    // printf("opath: %s\nofile: %s\n", original_pathname, original_filename);
+
     if (original_filename == NULL) {
         fprintf(stderr, "Original path cannot be directory path.\n");
         free(original_pathname);
@@ -68,7 +71,7 @@ int main(int argc, char ** argv){
     }
 
     // target path cannot be directory path
-    split_last_part_of_path(in_path, &target_pathname, &target_filename);
+    split_last_part_of_path(out_path, &target_pathname, &target_filename);
     if (target_filename == NULL) {
         fprintf(stderr, "Target path cannot be directory path");
         free(original_filename);
@@ -119,8 +122,8 @@ int main(int argc, char ** argv){
         }
 
         // find new softlink_inode and init to NULL
-        unsigned int inum = find_free_inode();
-        struct ext2_inode * slink_inode = NUM_TO_INODE(inum);
+        unsigned int snum = find_free_inode();
+        struct ext2_inode * slink_inode = NUM_TO_INODE(snum);
         memset(slink_inode, 0, sb->s_inode_size);
 
         // find a empty block for path and init to NULL
@@ -136,10 +139,13 @@ int main(int argc, char ** argv){
         unsigned int size = (unsigned int) (strlen(in_path) + 1);
         slink_inode->i_size = size;
         slink_inode->i_links_count = 1;
-        slink_inode->i_atime = slink_inode->i_ctime = slink_inode->i_atime = current_time();
+	unsigned int timestamp = current_time();
+        slink_inode->i_atime = timestamp;
+        slink_inode->i_ctime = timestamp;
+        slink_inode->i_atime = timestamp;
 
         // add dir_entry to target path inode
-        add_dir_entry_to_block(tpath_inode, oinode_num, EXT2_FT_SYMLINK, target_filename);
+        add_dir_entry_to_block(tpath_inode, snum, EXT2_FT_SYMLINK, target_filename);
     }
 
     free(target_filename);
