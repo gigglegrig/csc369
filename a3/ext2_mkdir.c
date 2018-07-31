@@ -14,9 +14,23 @@ int main(int argc, char **argv) {
     //parsing the target path and get the name of the new directory and the path
     char * target_pathname = NULL;
     char * target_dirname = NULL;
-    split_last_part_of_path(argv[2], &target_pathname, &target_dirname);
-    //char * original_pathname = argv[2];
+
+    int path_len = strlen(argv[2]);
+    char original_pathname[255];
+    strncpy(original_pathname, argv[2],path_len);
+    original_pathname[path_len] = '\0';
+    int idx = path_len - 1;
+    while(original_pathname[idx] == '/' && idx >= 0){
+    	original_pathname[idx] = '\0';
+        idx --;
+    }
+    printf("%s orig_name\n",original_pathname);
+
+
+    split_last_part_of_path(original_pathname, &target_pathname, &target_dirname);
+    
     printf("%s pathname\n",target_pathname);
+    
     printf("%s directory\n",target_dirname);
     
     //check whether the path exists, check whether the directory exists
@@ -43,15 +57,12 @@ int main(int argc, char **argv) {
     memset(newdir_inode, 0, sb->s_inode_size);
     
     //find a new block and set directory entry 
-    unsigned int bnum = find_free_block();
-    struct block * tblock = (struct block *) BLOCK(bnum);
-    struct ext2_dir_entry_2 * newdir = (struct ext2_dir_entry_2 *) tblock;  
-    set_dir_entry(newdir, inum, EXT2_BLOCK_SIZE, EXT2_FT_DIR, target_dirname);  
-
-    add_block_to_inode(newdir_inode, bnum);
+    //unsigned int bnum = find_free_block();
+    //struct block * tblock = (struct block *) BLOCK(bnum);
+    //struct ext2_dir_entry_2 * newdir = (struct ext2_dir_entry_2 *) tblock;  
 
     newdir_inode -> i_mode = EXT2_S_IFDIR;
-    newdir_inode -> i_size = 0;//in bytes???
-    
+    newdir_inode -> i_size = PAD(8 + (int) strlen(target_dirname));//in bytes???
+    newdir_inode -> i_links_count = 2;
     add_dir_entry_to_block(tpath_inode, inum, EXT2_FT_DIR, target_dirname);
 }
