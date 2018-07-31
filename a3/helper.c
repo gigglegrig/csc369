@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <errno.h>
 #include <zconf.h>
+#include <time.h>
 #include "helper.h"
 
 void check_argc(char * usage, int in, int target) {
@@ -432,4 +433,17 @@ int count_subfolder(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     }
 
     return 0;
+}
+
+unsigned int current_time() {
+    // return the current system timestamp in unsigned int. (NOT time_t)
+    // depends on <time.h>
+    time_t current_time;
+    current_time = time(NULL);
+    if (current_time == (time_t)-1) {
+        fprintf(stderr, "Failure to obtain the current time.\n");
+        exit(1);
+    }
+
+    return (unsigned int) current_time;
 }

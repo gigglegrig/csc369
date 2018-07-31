@@ -41,6 +41,8 @@ void add_block_to_inode(struct ext2_inode *, unsigned int);
 void add_dir_entry_to_block(struct ext2_inode *, unsigned int, unsigned char, char *);
 int get_block_from_inode(struct ext2_inode *, unsigned int);
 void set_dir_entry(struct ext2_dir_entry_2 *, unsigned int, unsigned short, unsigned char, char *);
+unsigned int current_time();
+
 
 // dirFunc functions
 typedef int (*dirFunc)(struct ext2_dir_entry_2 *, int, long *);
