@@ -3,6 +3,8 @@
 #ifndef CSC369_HELPER_H
 #define CSC369_HELPER_H
 
+#define NAME_MAX 255    // max chars in a file name
+
 #define BLOCK(x) (disk + EXT2_BLOCK_SIZE * (x))
 #define PAD(x) ((x) + ((4 - ((x) % 4)) % 4))
 #define MAX12 (12 + EXT2_BLOCK_SIZE / sizeof(int))
