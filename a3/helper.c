@@ -117,7 +117,14 @@ int find_last_char_n(char * string, char target) {
 }
 
 void split_last_part_of_path(char * path, char ** out_pathname, char ** out_filename) {
-    //check_path_format(path);
+    // if end with one or multiple '/', only save the first '/' in the ending '/'s.
+    int end_idx = (int) (strlen(path) - 1);
+    while(end_idx >= 1 && path[end_idx] == '/') {
+        if (path[end_idx - 1] != '/') {
+            path[end_idx] = '\0';
+            end_idx --;
+        }
+    }
 
     int last_slash = find_last_char_n(path, '/');
     if (last_slash + 1 == strlen(path)) {

@@ -139,7 +139,7 @@ int main(int argc, char ** argv){
         unsigned int size = (unsigned int) (strlen(in_path) + 1);
         slink_inode->i_size = size;
         slink_inode->i_links_count = 1;
-	unsigned int timestamp = current_time();
+	    unsigned int timestamp = current_time();
         slink_inode->i_atime = timestamp;
         slink_inode->i_ctime = timestamp;
         slink_inode->i_atime = timestamp;
