@@ -73,7 +73,7 @@ int main(int argc, char ** argv){
     // target path cannot be directory path
     split_last_part_of_path(out_path, &target_pathname, &target_filename);
     if (target_filename == NULL) {
-        fprintf(stderr, "Target path cannot be directory path");
+        fprintf(stderr, "Target path cannot be directory path\n");
         free(original_filename);
         free(original_pathname);
         free(target_pathname);
