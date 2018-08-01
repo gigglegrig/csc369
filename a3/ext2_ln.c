@@ -7,10 +7,10 @@
 #include "helper.h"
 
 int main(int argc, char ** argv){
-    char * usage = "Usage: ext2_ln <image file name> [-s] <absolute path to original file> <absolute path to target file>\n";
+    char * usage = "Usage: ext2_ln <image file name> [-s] <original file path> <target file path>\n";
     char * in_path;
     char * out_path;
-    int IS_HARDLINK = 0;
+    int IS_HARDLINK = 1;
 
     if (argc == 4) {
         // hardlink
@@ -46,7 +46,7 @@ int main(int argc, char ** argv){
     // printf("opath: %s\nofile: %s\n", original_pathname, original_filename);
 
     if (original_filename == NULL) {
-        fprintf(stderr, "Original path cannot be directory path.\n");
+        fprintf(stderr, "Original path cannot be directory path\n");
         free(original_pathname);
         exit(EISDIR);
     }
