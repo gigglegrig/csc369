@@ -142,7 +142,7 @@ int main(int argc, char ** argv){
 	    unsigned int timestamp = current_time();
         slink_inode->i_atime = timestamp;
         slink_inode->i_ctime = timestamp;
-        slink_inode->i_atime = timestamp;
+        slink_inode->i_mtime = timestamp;
 
         // add dir_entry to target path inode
         add_dir_entry_to_block(tpath_inode, snum, EXT2_FT_SYMLINK, target_filename);
