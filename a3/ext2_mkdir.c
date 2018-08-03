@@ -78,13 +78,18 @@ int main(int argc, char **argv) {
     unsigned int timestamp = current_time();
     newdir_inode -> i_atime = timestamp;
     newdir_inode -> i_ctime = timestamp;
-    //add new directory entry to the parent directory's block
-    add_dir_entry_to_block(tpath_inode, inum, EXT2_FT_DIR, target_dirname);
+    newdir_inode -> i_mtime = timestamp;
      
+    //add new directory entry to the parent directory's block
+    
+    add_dir_entry_to_block(tpath_inode, inum, EXT2_FT_DIR, target_dirname);
+    tpath_inode -> i_links_count += 1;
+    tpath_inode -> i_mtime = timestamp;
+
     //add. and ..to the new directory    
     add_dir_entry_to_block(newdir_inode, inum, EXT2_FT_DIR, ".");
     add_dir_entry_to_block(newdir_inode, INODE_TO_NUM(tpath_inode), EXT2_FT_DIR, "..");
-
+    
     free(target_pathname);
     free(target_dirname);
    
