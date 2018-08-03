@@ -119,22 +119,6 @@ int main(int argc, char **argv) {
     while (!feof(file)) {
         if (tblock_offset == 0) {
             bnum = find_free_block();
-            if (bnum == 0) {
-                // Set blocks to free
-                for (unsigned int i = 0; i < IBLOCKS(newfile_inode); i++) {
-                    int target_block_num = get_block_from_inode(newfile_inode, i);
-                    set_bit('b', target_block_num, 0);
-                }
-
-                // Set inode to free
-                set_bit('i', newfile_inode, 0);
-                //memset(del_inode, 0, sb->s_inode_size);
-                newfile_inode->i_dtime = current_time();
-                newfile_inode->i_size = 0;
-
-                fprintf(stderr, "Not enough block\n");
-                exit(ENOSPC);
-            }
             tblock = (struct block *) BLOCK(bnum);
         }
         c = fgetc(file);

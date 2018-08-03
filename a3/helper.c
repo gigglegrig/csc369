@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <zconf.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <math.h>
 #include "helper.h"
 
 void check_argc(char * usage, int in, int target) {
@@ -275,6 +277,22 @@ void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, un
         }
         // create new block
         unsigned int nblock_num = find_free_block();
+
+        if (nblock_num == 0) {
+            fprintf(stderr, "Not enough block\n");
+            struct ext2_inode * finode = NUM_TO_INODE(inode);
+            // Set blocks to free
+            for (unsigned int i = 0; i < IBLOCKS(finode); i++) {
+                int target_block_num = get_block_from_inode(finode, i);
+                set_bit('b', target_block_num, 0);
+            }
+
+            // Set inode to free
+            set_bit('i', inode, 0);
+            memset(finode, 0, sb->s_inode_size);
+            exit(ENOSPC);
+        }
+
         struct block * nblock = (struct block *) BLOCK(nblock_num);
         struct ext2_dir_entry_2 * dir = (struct ext2_dir_entry_2 *) nblock;
 
@@ -331,7 +349,7 @@ int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     if (space >= req_space) {
         dir->rec_len -= space;
         dir = (void *) dir + dir->rec_len;
-        set_dir_entry(dir, (unsigned int) args[1], (unsigned short)space, (unsigned char) args[3], (char *) args[4]);
+        set_dir_entry(dir, (unsigned int) args[1], (unsigned short)space, (unsigned char) args[2], (char *) args[3]);
         return 1;
     }
 
@@ -450,4 +468,13 @@ unsigned int current_time() {
     }
 
     return (unsigned int) current_time;
+}
+
+void check_file_size(char* filename){
+    struct stat buf;
+    stat(filename, &buf);
+    off_t size = buf.st_size;
+    if (ceil((double) size / EXT2_BLOCK_SIZE) > sb->s_free_blocks_count) {
+        exit(ENOSPC);
+    }
 }
