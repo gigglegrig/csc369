@@ -263,7 +263,7 @@ int get_block_from_inode(struct ext2_inode *inode, unsigned num) {
 void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, unsigned char file_type, char *name) {
     // Name must be NULL terminated!
     int req_space = PAD(8 + (int) strlen(name));
-    long parsed_args[5] = {req_space, inode, 0, file_type, (intptr_t) name};
+    long parsed_args[5] = {req_space, inode, file_type, (intptr_t) name};
 
     int res = directory_block_iterator(dir_inode, add_dir_entry, 5, parsed_args);
 
@@ -322,17 +322,16 @@ int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int ar
 
 int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     // args:
-    // 0 - required space,  1 - inode,  2 - reclen
-    // 3 - file_type,       4 - name
+    // 0 - required space,  1 - inode,
+    // 2 - file_type,       3 - name
 
     // Calculate space
-    int space = (dir->rec_len > EXT2_BLOCK_SIZE) ? EXT2_BLOCK_SIZE : (dir->rec_len - PAD(dir->name_len + 8));
+    int space = (dir->rec_len > EXT2_BLOCK_SIZE) ? (dir->rec_len % EXT2_BLOCK_SIZE * EXT2_BLOCK_SIZE) : (dir->rec_len - PAD(dir->name_len + 8));
     int req_space = (int) args[0];
     if (space >= req_space) {
-        args[2] = (args[2] == 0) ? space : args[2];
         dir->rec_len -= space;
-        dir = (void *) dir + PAD(dir->name_len + 8);
-        set_dir_entry(dir, (unsigned int) args[1], (unsigned short)args[2], (unsigned char) args[3], (char *) args[4]);
+        dir = (void *) dir + dir->rec_len;
+        set_dir_entry(dir, (unsigned int) args[1], (unsigned short)space, (unsigned char) args[3], (char *) args[4]);
         return 1;
     }
 
