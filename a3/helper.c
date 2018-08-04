@@ -7,7 +7,6 @@
 #include <errno.h>
 #include <zconf.h>
 #include <time.h>
-#include <sys/stat.h>
 #include "helper.h"
 
 void check_argc(char * usage, int in, int target) {
@@ -117,15 +116,13 @@ int find_last_char_n(char * string, char target) {
 }
 
 void split_last_part_of_path(char * path, char ** out_pathname, char ** out_filename) {
-    // if end with one or multiple '/', only save the first '/' in the ending '/'s.
-    int end_idx = (int) (strlen(path) - 1);
-    while(end_idx >= 1 && path[end_idx] == '/') {
-        if (path[end_idx - 1] != '/') {
-            path[end_idx] = '\0';
-            end_idx --;
-        }
+    int end_idx = strlen(path) -1;
+    // remove all tailing slash except for one
+    while (end_idx >= 1 && path[end_idx - 1] == '/') {
+        path[end_idx] = '\0';
+        end_idx --;
     }
-
+    
     int last_slash = find_last_char_n(path, '/');
     if (last_slash + 1 == strlen(path)) {
         // The last part must be a directory
@@ -402,9 +399,7 @@ int remove_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
 
         // Set inode to free
         set_bit('i', del_inode_num, 0);
-        //memset(del_inode, 0, sb->s_inode_size);
-        del_inode->i_dtime = current_time();
-        del_inode->i_size = 0;
+        memset(del_inode, 0, sb->s_inode_size);
     }
 
     // If argc == 0, then must recursively delete every dir entry,
@@ -456,18 +451,4 @@ unsigned int current_time() {
     }
 
     return (unsigned int) current_time;
-}
-
-
-void check_file_size(char* filename) {
-    struct stat stat_buf;
-    stat(filename,&stat_buf);
-    int size = stat_buf.st_size;
-
-    int mod = size % 1024 > 0 ? 1 : 0;
-
-    if (size / 1024 + mod < sb->s_free_blocks_count) {
-        fprintf(stderr, "Not enough space.\n");
-        exit(ENOSPC);
-    }
 }
