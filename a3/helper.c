@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <zconf.h>
 #include <time.h>
+#include <sys/stat.h>
+#include <math.h>
 #include "helper.h"
 
 void check_argc(char * usage, int in, int target) {
@@ -263,7 +265,7 @@ int get_block_from_inode(struct ext2_inode *inode, unsigned num) {
 void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, unsigned char file_type, char *name) {
     // Name must be NULL terminated!
     int req_space = PAD(8 + (int) strlen(name));
-    long parsed_args[5] = {req_space, inode, 0, file_type, (intptr_t) name};
+    long parsed_args[5] = {req_space, inode, file_type, (intptr_t) name};
 
     int res = directory_block_iterator(dir_inode, add_dir_entry, 5, parsed_args);
 
@@ -275,6 +277,22 @@ void add_dir_entry_to_block(struct ext2_inode *dir_inode, unsigned int inode, un
         }
         // create new block
         unsigned int nblock_num = find_free_block();
+
+        if (nblock_num == 0) {
+            fprintf(stderr, "Not enough block\n");
+            struct ext2_inode * finode = NUM_TO_INODE(inode);
+            // Set blocks to free
+            for (unsigned int i = 0; i < IBLOCKS(finode); i++) {
+                int target_block_num = get_block_from_inode(finode, i);
+                set_bit('b', target_block_num, 0);
+            }
+
+            // Set inode to free
+            set_bit('i', inode, 0);
+            memset(finode, 0, sb->s_inode_size);
+            exit(ENOSPC);
+        }
+
         struct block * nblock = (struct block *) BLOCK(nblock_num);
         struct ext2_dir_entry_2 * dir = (struct ext2_dir_entry_2 *) nblock;
 
@@ -322,17 +340,16 @@ int directory_block_iterator(struct ext2_inode * dir_inode, dirFunc func, int ar
 
 int add_dir_entry(struct ext2_dir_entry_2 * dir, int argc, long * args) {
     // args:
-    // 0 - required space,  1 - inode,  2 - reclen
-    // 3 - file_type,       4 - name
+    // 0 - required space,  1 - inode,
+    // 2 - file_type,       3 - name
 
     // Calculate space
-    int space = (dir->rec_len > EXT2_BLOCK_SIZE) ? EXT2_BLOCK_SIZE : (dir->rec_len - PAD(dir->name_len + 8));
+    int space = (dir->rec_len > EXT2_BLOCK_SIZE) ? (dir->rec_len % EXT2_BLOCK_SIZE * EXT2_BLOCK_SIZE) : (dir->rec_len - PAD(dir->name_len + 8));
     int req_space = (int) args[0];
     if (space >= req_space) {
-        args[2] = (args[2] == 0) ? space : args[2];
         dir->rec_len -= space;
-        dir = (void *) dir + PAD(dir->name_len + 8);
-        set_dir_entry(dir, (unsigned int) args[1], (unsigned short)args[2], (unsigned char) args[3], (char *) args[4]);
+        dir = (void *) dir + dir->rec_len;
+        set_dir_entry(dir, (unsigned int) args[1], (unsigned short)space, (unsigned char) args[2], (char *) args[3]);
         return 1;
     }
 
@@ -451,4 +468,13 @@ unsigned int current_time() {
     }
 
     return (unsigned int) current_time;
+}
+
+void check_file_size(char* filename){
+    struct stat buf;
+    stat(filename, &buf);
+    off_t size = buf.st_size;
+    if (ceil((double) size / EXT2_BLOCK_SIZE) > sb->s_free_blocks_count) {
+        exit(ENOSPC);
+    }
 }
