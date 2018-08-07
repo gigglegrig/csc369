@@ -8,7 +8,6 @@
 #include <zconf.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <math.h>
 #include "helper.h"
 
 void check_argc(char * usage, int in, int target) {
@@ -474,7 +473,9 @@ void check_file_size(char* filename){
     struct stat buf;
     stat(filename, &buf);
     off_t size = buf.st_size;
-    if (ceil((double) size / EXT2_BLOCK_SIZE) > sb->s_free_blocks_count) {
+    unsigned int req_space = (unsigned int)size / EXT2_BLOCK_SIZE;
+    req_space = (size % EXT2_BLOCK_SIZE == 0) ? req_space : req_space + 1;
+    if (req_space > sb->s_free_blocks_count) {
         exit(ENOSPC);
     }
 }
